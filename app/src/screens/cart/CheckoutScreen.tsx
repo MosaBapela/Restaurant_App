@@ -227,8 +227,6 @@ const styles = StyleSheet.create({
   footer: {
     padding: spacing.lg,
     backgroundColor: colors.white,
-    borderTopWidth: 1,
-    borderTopColor: colors.lightGray,
     shadowColor: colors.text,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,

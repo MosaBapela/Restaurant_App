@@ -183,8 +183,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.lightGray,
   },
   totalLabel: {
     fontSize: typography.sizes.base,
