@@ -38,7 +38,7 @@ export const MainTabNavigator = () => {
     >
       <Tab.Screen
         name="HomeTab"
-        component={HomeScreen}
+        component={HomeScreen as any}
         options={{
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, size }) => (
@@ -49,7 +49,7 @@ export const MainTabNavigator = () => {
 
       <Tab.Screen
         name="CartTab"
-        component={CartScreen}
+        component={CartScreen as any}
         options={{
           tabBarLabel: 'Cart',
           tabBarIcon: ({ color, size }) => (
@@ -67,7 +67,7 @@ export const MainTabNavigator = () => {
 
       <Tab.Screen
         name="ProfileTab"
-        component={ProfileStackNavigator}
+        component={ProfileStackNavigator as any}
         options={{
           tabBarLabel: 'Profile',
           tabBarIcon: ({ color, size }) => (
@@ -79,7 +79,7 @@ export const MainTabNavigator = () => {
       {user?.isAdmin && (
         <Tab.Screen
           name="AdminTab"
-          component={AdminStackNavigator}
+          component={AdminStackNavigator as any}
           options={{
             tabBarLabel: 'Admin',
             tabBarIcon: ({ color, size }) => (

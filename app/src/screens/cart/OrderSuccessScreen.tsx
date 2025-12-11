@@ -14,7 +14,7 @@ import { colors, spacing, typography } from '../../theme';
 type Props = NativeStackScreenProps<any, 'OrderSuccess'>;
 
 export const OrderSuccessScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { orderId } = route.params;
+  const { orderId } = route.params as { orderId: string };
   const scaleAnim = new Animated.Value(0);
   const fadeAnim = new Animated.Value(0);
 
@@ -36,11 +36,11 @@ export const OrderSuccessScreen: React.FC<Props> = ({ navigation, route }) => {
   }, []);
 
   const handleTrackOrder = () => {
-    navigation.navigate('Profile', { screen: 'OrderHistory' });
+    navigation.navigate('Main', { screen: 'ProfileTab', params: { screen: 'OrderHistory' } });
   };
 
   const handleBackToHome = () => {
-    navigation.navigate('Home');
+    navigation.navigate('Main', { screen: 'HomeTab' });
   };
 
   return (

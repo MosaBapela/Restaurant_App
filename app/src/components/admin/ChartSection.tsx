@@ -39,20 +39,31 @@ export const ChartSection: React.FC<ChartSectionProps> = ({
     },
   };
 
-  const Chart = type === 'line' ? LineChart : BarChart;
-
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
-      <Chart
-        data={data}
-        width={chartWidth}
-        height={220}
-        chartConfig={chartConfig}
-        bezier={type === 'line'}
-        style={styles.chart}
-        fromZero
-      />
+      {type === 'line' ? (
+        <LineChart
+          data={data}
+          width={chartWidth}
+          height={220}
+          chartConfig={chartConfig}
+          bezier
+          style={styles.chart}
+          fromZero
+        />
+      ) : (
+        <BarChart
+          data={data}
+          width={chartWidth}
+          height={220}
+          chartConfig={chartConfig}
+          style={styles.chart}
+          fromZero
+          yAxisLabel=""
+          yAxisSuffix=""
+        />
+      )}
     </View>
   );
 };

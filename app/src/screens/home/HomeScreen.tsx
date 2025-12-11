@@ -2,18 +2,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
 import {
-    Image,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Image,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { FoodCategoryTabs } from '../../components/food/FoodCategoryTabs';
 import { FoodGrid } from '../../components/food/FoodGrid';
 import { mockFoodItems } from '../../data/mockData';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
+import { toggleFavorite } from '../../redux/slices/favoritesSlice';
 import { setCategory, setFoodItems, setSearchQuery } from '../../redux/slices/foodSlice';
 import { colors, spacing, typography } from '../../theme';
 import { FoodCategory } from '../../types/food.types';
@@ -25,6 +26,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAppSelector((state) => state.auth);
   const { filteredItems, selectedCategory } = useAppSelector((state) => state.food);
   const { totalItems } = useAppSelector((state) => state.cart);
+  const favorites = useAppSelector((state) => state.favorites);
   const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
@@ -50,7 +52,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
+          <TouchableOpacity onPress={() => navigation.navigate('ProfileTab')}>
             <Image
               source={{ uri: 'https://ui-avatars.com/api/?name=' + user?.name || 'User' }}
               style={styles.avatar}
@@ -107,16 +109,18 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       {/* Food Grid */}
-      <FoodGrid
+        <FoodGrid
         items={filteredItems}
         onItemPress={handleFoodPress}
+        onFavoritePress={(item) => dispatch(toggleFavorite(item.id))}
+        favorites={favorites}
       />
 
       {/* Cart Badge */}
       {totalItems > 0 && (
         <TouchableOpacity
           style={styles.cartFab}
-          onPress={() => navigation.navigate('Cart')}
+          onPress={() => navigation.navigate('CartTab')}
         >
           <Ionicons name="cart" size={24} color={colors.white} />
           <View style={styles.cartBadge}>

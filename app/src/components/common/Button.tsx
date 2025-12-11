@@ -1,6 +1,7 @@
 import React from 'react';
 import {
     ActivityIndicator,
+    StyleProp,
     StyleSheet,
     Text,
     TextStyle,
@@ -16,8 +17,8 @@ interface ButtonProps {
   size?: 'small' | 'medium' | 'large';
   disabled?: boolean;
   loading?: boolean;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
   fullWidth?: boolean;
 }
 
@@ -34,7 +35,10 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   const buttonStyles = [
     styles.button,
-    styles[variant],
+    // variant can be 'text' which corresponds to a Text style in the stylesheet,
+    // avoid indexing styles with a key that may be a TextStyle. Resolve variant
+    // style explicitly so buttonStyles only contains ViewStyle entries.
+    variant === 'text' ? styles.textVariant : styles[variant],
     styles[size],
     disabled && styles.disabled,
     fullWidth && styles.fullWidth,
@@ -87,9 +91,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.primary,
   },
-  text: {
-    backgroundColor: 'transparent',
-  },
   disabled: {
     opacity: 0.5,
   },
@@ -105,6 +106,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xl,
   },
+  // view-level style for the 'text' variant (keeps button background transparent)
+  textVariant: {
+    backgroundColor: 'transparent',
+  },
+  // Text styles
   text: {
     fontWeight: typography.weights.semibold,
     color: colors.white,

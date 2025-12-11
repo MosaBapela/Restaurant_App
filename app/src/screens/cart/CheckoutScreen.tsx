@@ -57,11 +57,17 @@ export const CheckoutScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleAddNewAddress = () => {
-    navigation.navigate('Profile', { screen: 'ManageAddresses', params: { addNew: true } });
+    navigation.navigate('Main', {
+      screen: 'ProfileTab',
+      params: { screen: 'ManageAddresses', params: { addNew: true } },
+    });
   };
 
   const handleAddNewCard = () => {
-    navigation.navigate('Profile', { screen: 'ManageCards', params: { addNew: true } });
+    navigation.navigate('Main', {
+      screen: 'ProfileTab',
+      params: { screen: 'ManageCards', params: { addNew: true } },
+    });
   };
 
   const calculateTotal = () => {
@@ -193,8 +199,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.lightGray,
   },
   backButton: {
     width: 40,

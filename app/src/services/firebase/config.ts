@@ -14,12 +14,24 @@ const firebaseConfig = {
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase safely — don't crash the bundler when env vars are missing
+let app: any = null;
+try {
+  if (!firebaseConfig.apiKey) {
+    throw new Error('Missing Firebase API key (EXPO_PUBLIC_FIREBASE_API_KEY)');
+  }
+  app = initializeApp(firebaseConfig);
+} catch (err) {
+  const error = err as Error | undefined;
+  // Log a warning during development; avoid throwing to keep the dev server up
+  // The rest of the app should handle missing firebase services gracefully.
+  // eslint-disable-next-line no-console
+  console.warn('Firebase initialization skipped:', error?.message ?? String(err));
+}
 
-// Initialize Firebase services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+// Initialize Firebase services only when app is available
+export const auth = app ? getAuth(app) : (null as any);
+export const db = app ? getFirestore(app) : (null as any);
+export const storage = app ? getStorage(app) : (null as any);
 
 export default app;

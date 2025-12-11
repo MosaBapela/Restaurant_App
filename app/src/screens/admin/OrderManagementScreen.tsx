@@ -13,6 +13,7 @@ import { EmptyState } from '../../components/common/EmptyState';
 import { Header } from '../../components/common/Header';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { updateOrderStatus } from '../../redux/slices/orderSlice';
+import type { RootState } from '../../redux/store';
 import { colors, spacing, typography } from '../../theme';
 import { Order, OrderStatus } from '../../types/order.types';
 
@@ -25,6 +26,7 @@ const STATUS_FILTERS: (OrderStatus | 'all')[] = [
   'preparing',
   'out_for_delivery',
   'delivered',
+  'cancelled',
 ];
 
 const FILTER_LABELS = {
@@ -34,17 +36,18 @@ const FILTER_LABELS = {
   preparing: 'Preparing',
   out_for_delivery: 'Out for Delivery',
   delivered: 'Delivered',
+  cancelled: 'Cancelled',
 };
 
 export const OrderManagementScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
-  const { orders } = useAppSelector((state) => state.order);
+  const { orders } = useAppSelector((state: RootState) => state.order);
   const [selectedFilter, setSelectedFilter] = useState<OrderStatus | 'all'>('all');
 
   const filteredOrders =
     selectedFilter === 'all'
       ? orders
-      : orders.filter((order) => order.status === selectedFilter);
+        : orders.filter((order: Order) => order.status === selectedFilter);
 
   const handleUpdateStatus = (orderId: string, status: OrderStatus) => {
     dispatch(updateOrderStatus({ orderId, status }));
@@ -125,8 +128,6 @@ const styles = StyleSheet.create({
   },
   filtersContainer: {
     backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.lightGray,
   },
   filtersContent: {
     paddingHorizontal: spacing.md,

@@ -1,6 +1,7 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import {
+    Alert,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -37,6 +38,9 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
         dispatch(loginSuccess(mockUser));
       }
       setLoading(false);
+      Alert.alert('Success', 'Logged in successfully', [
+        { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Main' }] }) },
+      ]);
     }, 1000);
   };
 

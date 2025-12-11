@@ -29,7 +29,12 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       {
         text: 'Logout',
         style: 'destructive',
-        onPress: () => dispatch(logout()),
+        onPress: () => {
+          dispatch(logout());
+          Alert.alert('Success', 'You have been logged out', [
+            { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Auth' }] }) },
+          ]);
+        },
       },
     ]);
   };

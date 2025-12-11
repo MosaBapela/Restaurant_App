@@ -1,6 +1,7 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import {
+    Alert,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -62,6 +63,9 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
       
       dispatch(loginSuccess(newUser));
       setLoading(false);
+      Alert.alert('Success', 'Account created successfully', [
+        { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Main' }] }) },
+      ]);
     }, 1000);
   };
 

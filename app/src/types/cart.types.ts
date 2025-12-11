@@ -1,3 +1,5 @@
+import { FoodItem } from './food.types';
+
 export interface CartItemCustomization {
   selectedSides: string[];
   selectedDrink: string | null;

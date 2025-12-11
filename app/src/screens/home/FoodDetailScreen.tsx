@@ -2,12 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import {
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { Button } from '../../components/common/Button';
 import { CustomizationSection } from '../../components/food/CustomizationSection';
@@ -15,17 +15,20 @@ import { ExtrasOptions } from '../../components/food/ExtrasOptions';
 import { FoodDetailHeader } from '../../components/food/FoodDetailHeader';
 import { QuantitySelector } from '../../components/food/QuantitySelector';
 import { SideOptions } from '../../components/food/SideOptions';
-import { useAppDispatch } from '../../redux/hooks';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { addToCart } from '../../redux/slices/cartSlice';
+import { toggleFavorite } from '../../redux/slices/favoritesSlice';
 import { colors, spacing, typography } from '../../theme';
 import { CartItem, CartItemCustomization } from '../../types/cart.types';
+import { DrinkOption, Extra, FoodItem } from '../../types/food.types';
 import { CURRENCY_SYMBOL } from '../../utils/constants';
 
 type Props = NativeStackScreenProps<any, 'FoodDetail'>;
 
 export const FoodDetailScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { foodItem } = route.params;
+  const { foodItem } = route.params as { foodItem: FoodItem };
   const dispatch = useAppDispatch();
+  const favorites = useAppSelector((state) => state.favorites);
 
   const [quantity, setQuantity] = useState(1);
   const [selectedSides, setSelectedSides] = useState<string[]>([]);
@@ -66,14 +69,15 @@ export const FoodDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
     // Add selected drink price
     if (selectedDrink && foodItem.drinkOptions) {
-      const drink = foodItem.drinkOptions.find((d) => d.id === selectedDrink);
+      const drink = foodItem.drinkOptions.find((d: DrinkOption) => d.id === selectedDrink);
       if (drink) total += drink.price;
     }
 
     // Add extras prices
     if (foodItem.extras) {
+      const extras = foodItem.extras;
       selectedExtras.forEach((extraId) => {
-        const extra = foodItem.extras.find((e) => e.id === extraId);
+        const extra = extras.find((e: Extra) => e.id === extraId);
         if (extra) total += extra.price;
       });
     }
@@ -113,8 +117,15 @@ export const FoodDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         >
           <Ionicons name="arrow-back" size={24} color={colors.white} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.favoriteButton}>
-          <Ionicons name="heart-outline" size={24} color={colors.white} />
+        <TouchableOpacity
+          style={styles.favoriteButton}
+          onPress={() => dispatch(toggleFavorite(foodItem.id))}
+        >
+          <Ionicons
+            name={favorites.includes(foodItem.id) ? 'heart' : 'heart-outline'}
+            size={24}
+            color={favorites.includes(foodItem.id) ? colors.primary : colors.white}
+          />
         </TouchableOpacity>
       </View>
 
@@ -142,7 +153,7 @@ export const FoodDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           {foodItem.drinkOptions && foodItem.drinkOptions.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Choose a Drink</Text>
-              {foodItem.drinkOptions.map((drink) => (
+              {foodItem.drinkOptions.map((drink: DrinkOption) => (
                 <TouchableOpacity
                   key={drink.id}
                   style={[

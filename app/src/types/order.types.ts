@@ -1,3 +1,6 @@
+import { CartItemCustomization } from './cart.types';
+import { Address, PaymentCard } from './user.types';
+
 export type OrderStatus =
   | 'pending'
   | 'confirmed'

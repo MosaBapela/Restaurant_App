@@ -1,3 +1,6 @@
+import { FoodCategory } from '../types/food.types';
+import { OrderStatus } from '../types/order.types';
+
 export const FOOD_CATEGORIES: FoodCategory[] = [
   'Burgers',
   'Pizza',

@@ -38,7 +38,8 @@ export const CardDisplay: React.FC<CardDisplayProps> = ({
     >
       <View style={styles.iconContainer}>
         <Ionicons
-          name={getCardIcon(card.cardNumber)}
+          // icon name returned dynamically; cast to any to satisfy icon union typing
+          name={getCardIcon(card.cardNumber) as any}
           size={32}
           color={colors.primary}
         />
