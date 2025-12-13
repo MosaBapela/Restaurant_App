@@ -4,6 +4,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useAppSelector } from '../redux/hooks';
 import { CartScreen } from '../screens/cart/CartScreen';
+import { FavoritesScreen } from '../screens/home/FavoritesScreen';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { colors } from '../theme';
 import { AdminStackNavigator } from './AdminStackNavigator';
@@ -46,6 +47,18 @@ export const MainTabNavigator = () => {
       />
 
       <Tab.Screen
+        name="FavoritesTab"
+        component={FavoritesScreen as any}
+        options={{
+          tabBarLabel: 'Favourites',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="heart" size={size} color={color} />
+          ),
+        }}
+      />
+
+
+      <Tab.Screen
         name="CartTab"
         component={CartScreen as any}
         options={{
@@ -72,7 +85,16 @@ export const MainTabNavigator = () => {
             <Ionicons name="person" size={size} color={color} />
           ),
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Prevent the default behavior and navigate explicitly to the Profile screen
+            // This resets the nested Profile stack so tapping the tab always opens the main Profile screen
+            e.preventDefault();
+            navigation.navigate('ProfileTab', { screen: 'Profile' } as any);
+          },
+        })}
       />
+      {/* Ensure tapping the Profile tab always lands on the main Profile screen (resets nested stack) */}
 
       {user?.isAdmin && (
         <Tab.Screen

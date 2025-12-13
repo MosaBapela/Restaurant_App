@@ -85,7 +85,8 @@ export const CartScreen: React.FC<Props> = ({ navigation }) => {
 
   if (items.length === 0) {
     return (
-      <EmptyCart onStartShopping={() => navigation.navigate('Home')} />
+      // navigate to the Home tab reliably
+      <EmptyCart onStartShopping={() => navigation.navigate('HomeTab' as any)} />
     );
   }
 

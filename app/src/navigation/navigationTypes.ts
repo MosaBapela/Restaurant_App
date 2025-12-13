@@ -23,6 +23,7 @@ export type ProfileStackParamList = {
   OrderHistory: undefined;
   ManageAddresses: { addNew?: boolean };
   ManageCards: { addNew?: boolean };
+  Help: undefined;
 };
 
 export type AdminStackParamList = {
@@ -34,6 +35,7 @@ export type AdminStackParamList = {
 
 export type MainTabParamList = {
   HomeTab: undefined;
+  FavoritesTab: undefined;
   CartTab: undefined;
   ProfileTab: undefined;
   AdminTab: undefined;

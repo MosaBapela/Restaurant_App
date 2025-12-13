@@ -1,6 +1,7 @@
 import { createStackNavigator } from '@react-navigation/stack';
 import React from 'react';
 import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
+import { HelpScreen } from '../screens/profile/HelpScreen';
 import { ManageAddressesScreen } from '../screens/profile/ManageAddressesScreen';
 import { ManageCardsScreen } from '../screens/profile/ManageCardsScreen';
 import { OrderHistoryScreen } from '../screens/profile/OrderHistoryScreen';
@@ -18,6 +19,7 @@ export const ProfileStackNavigator = () => {
     >
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+  <Stack.Screen name="Help" component={HelpScreen} />
       <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} />
       <Stack.Screen name="ManageAddresses" component={ManageAddressesScreen} />
       <Stack.Screen name="ManageCards" component={ManageCardsScreen} />

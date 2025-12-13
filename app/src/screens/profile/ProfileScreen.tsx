@@ -56,7 +56,13 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             source={{
               uri: `https://ui-avatars.com/api/?name=${user.name}+${user.surname}&size=128`,
             }}
+            // provide a static default image as fallback for Android / offline
+            defaultSource={require('../../../../assets/images/react-logo.png')}
             style={styles.avatar}
+            resizeMode="cover"
+            onError={() => {
+              /* If the remote avatar fails to load, the defaultSource will be shown */
+            }}
           />
           <Text style={styles.name}>
             {user.name} {user.surname}
@@ -167,7 +173,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             <Ionicons name="chevron-forward" size={20} color={colors.darkGray} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Help')}>
             <View style={styles.menuItemLeft}>
               <View style={styles.menuIconContainer}>
                 <Ionicons name="help-circle-outline" size={24} color={colors.primary} />

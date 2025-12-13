@@ -12,7 +12,6 @@ export const mockFoodItems: FoodItem[] = [
     rating: 4.5,
     sideOptions: [
       { id: 's1', name: 'Chips', included: true },
-      { id: 's2', name: 'Pap', included: true },
       { id: 's3', name: 'Garden Salad', included: true },
       { id: 's4', name: 'Coleslaw', included: true },
     ],
@@ -121,7 +120,6 @@ export const mockFoodItems: FoodItem[] = [
     rating: 4.6,
     sideOptions: [
       { id: 's1', name: 'Rice', included: true },
-      { id: 's2', name: 'Pap', included: true },
       { id: 's3', name: 'Mashed Potato', included: true },
       { id: 's4', name: 'Grilled Vegetables', included: true },
     ],
