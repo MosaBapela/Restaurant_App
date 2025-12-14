@@ -2,12 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import {
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { Button } from '../../components/common/Button';
 import { CustomizationSection } from '../../components/food/CustomizationSection';
@@ -131,6 +131,7 @@ export const FoodDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: 140, flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
       >
         <FoodDetailHeader item={foodItem} />

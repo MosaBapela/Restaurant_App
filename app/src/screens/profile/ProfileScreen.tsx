@@ -32,7 +32,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         onPress: () => {
           dispatch(logout());
           Alert.alert('Success', 'You have been logged out', [
-            { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Auth' }] }) },
+            { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Auth', params: { screen: 'Closing' } }] }) },
           ]);
         },
       },
@@ -53,9 +53,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <Image
-            source={{
-              uri: `https://ui-avatars.com/api/?name=${user.name}+${user.surname}&size=128`,
-            }}
+            source={{ uri: `https://ui-avatars.com/api/?name=${user.name}+${user.surname}&size=128` }}
             // provide a static default image as fallback for Android / offline
             defaultSource={require('../../../../assets/images/react-logo.png')}
             style={styles.avatar}

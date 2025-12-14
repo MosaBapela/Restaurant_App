@@ -40,7 +40,10 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => dispatch(deleteFoodItem(item.id)),
+            onPress: () => {
+              dispatch(deleteFoodItem(item.id));
+              Alert.alert('Deleted', `${item.name} has been deleted.`);
+            },
         },
       ]
     );

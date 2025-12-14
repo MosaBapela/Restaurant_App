@@ -4,6 +4,8 @@ export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
+  Welcome: undefined;
+  Closing: undefined;
 };
 
 export type HomeStackParamList = {

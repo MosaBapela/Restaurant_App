@@ -23,23 +23,40 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
   const handleLogin = async () => {
+    // basic validation with inline errors
+    const emailRegex = /^\S+@\S+\.\S+$/;
+    setEmailError(null);
+    setPasswordError(null);
+    let hasError = false;
+    if (!emailRegex.test(email)) {
+      setEmailError('Please enter a valid email address');
+      hasError = true;
+    }
+    if (!password) {
+      setPasswordError('Please enter your password');
+      hasError = true;
+    }
+    if (hasError) return;
+
     setLoading(true);
-    
+
     // Simulate API call
     setTimeout(() => {
       // Check if admin login
-      if (email === 'admin@restaurant.com') {
+      if (email.toLowerCase() === 'admin@restaurant.com') {
         dispatch(loginSuccess(mockAdminUser));
       } else {
         dispatch(loginSuccess(mockUser));
       }
       setLoading(false);
       Alert.alert('Success', 'Logged in successfully', [
-        { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Main' }] }) },
+        { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: email.toLowerCase() === 'admin@restaurant.com' ? 'Admin' : 'Main' }] }) },
       ]);
     }, 1000);
   };
@@ -56,8 +73,8 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.header}>
           <View style={styles.headerShape} />
           <View style={styles.headerContent}>
-            <Text style={styles.title}>Log In</Text>
-            <Text style={styles.subtitle}>Please login to using app</Text>
+              <Text style={styles.title}>Log In</Text>
+              <Text style={styles.subtitle}>Please log in to use the restaurant app</Text>
           </View>
         </View>
 
@@ -70,6 +87,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             keyboardType="email-address"
             autoCapitalize="none"
             icon="mail-outline"
+            error={emailError || undefined}
           />
 
           <Input
@@ -79,6 +97,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             onChangeText={setPassword}
             isPassword
             icon="lock-closed-outline"
+            error={passwordError || undefined}
           />
 
           <View style={styles.options}>

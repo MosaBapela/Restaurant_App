@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import {
     Alert,
@@ -95,7 +96,25 @@ export const AddEditFoodScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Image Preview */}
         <View style={styles.imageSection}>
           <Image source={{ uri: formData.image }} style={styles.image} />
-          <TouchableOpacity style={styles.changeImageButton}>
+          <TouchableOpacity style={styles.changeImageButton} onPress={async () => {
+            // ask for permissions and launch image picker
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('Permission required', 'Permission to access media library is required to select images.');
+              return;
+            }
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              quality: 0.8,
+            });
+            if (!result.canceled) {
+              // expo-image-picker v14+ returns assets array
+              // fallback to result.uri for older versions
+              const uri = (result.assets && result.assets[0]?.uri) || (result as any).uri;
+              if (uri) updateField('image', uri);
+            }
+          }}>
             <Ionicons name="camera-outline" size={24} color={colors.white} />
           </TouchableOpacity>
         </View>

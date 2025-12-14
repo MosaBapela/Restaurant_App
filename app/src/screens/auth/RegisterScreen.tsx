@@ -34,10 +34,33 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     postalCode: '',
   });
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
 
   const handleRegister = async () => {
+    // basic validation with inline errors
+    const emailRegex = /^\S+@\S+\.\S+$/;
+    setEmailError(null);
+    setPasswordError(null);
+    setConfirmPasswordError(null);
+    let hasError = false;
+    if (!emailRegex.test(formData.email)) {
+      setEmailError('Please enter a valid email address');
+      hasError = true;
+    }
+    if (!formData.password || formData.password.length < 6) {
+      setPasswordError('Password must be at least 6 characters long');
+      hasError = true;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      setConfirmPasswordError('Passwords do not match');
+      hasError = true;
+    }
+    if (hasError) return;
+
     setLoading(true);
-    
+
     // Simulate API call
     setTimeout(() => {
       const newUser: User = {
@@ -117,6 +140,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             keyboardType="email-address"
             autoCapitalize="none"
             icon="mail-outline"
+            error={emailError || undefined}
           />
 
           <Input
@@ -135,6 +159,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             onChangeText={(value) => updateField('password', value)}
             isPassword
             icon="lock-closed-outline"
+            error={passwordError || undefined}
           />
 
           <Input
@@ -144,6 +169,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             onChangeText={(value) => updateField('confirmPassword', value)}
             isPassword
             icon="lock-closed-outline"
+            error={confirmPasswordError || undefined}
           />
 
           <Text style={styles.sectionTitle}>Address Details</Text>

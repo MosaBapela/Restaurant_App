@@ -7,7 +7,6 @@ import { CartScreen } from '../screens/cart/CartScreen';
 import { FavoritesScreen } from '../screens/home/FavoritesScreen';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { colors } from '../theme';
-import { AdminStackNavigator } from './AdminStackNavigator';
 import { MainTabParamList } from './navigationTypes';
 import { ProfileStackNavigator } from './ProfileStackNavigator';
 
@@ -96,18 +95,7 @@ export const MainTabNavigator = () => {
       />
       {/* Ensure tapping the Profile tab always lands on the main Profile screen (resets nested stack) */}
 
-      {user?.isAdmin && (
-        <Tab.Screen
-          name="AdminTab"
-          component={AdminStackNavigator as any}
-          options={{
-            tabBarLabel: 'Admin',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="settings" size={size} color={color} />
-            ),
-          }}
-        />
-      )}
+      {/* Admin access is provided via the root Admin stack for admin users; do not expose admin tab here */}
     </Tab.Navigator>
   );
 };
