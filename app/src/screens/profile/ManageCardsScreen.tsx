@@ -205,6 +205,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.md,
+    flexGrow: 1,
+    paddingBottom: 140,
   },
   modalContainer: {
     flex: 1,

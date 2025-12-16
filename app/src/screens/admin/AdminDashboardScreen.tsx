@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React from 'react';
 import {
+    Alert,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -11,14 +12,32 @@ import {
 } from 'react-native';
 import { ChartSection } from '../../components/admin/ChartSection';
 import { StatCard } from '../../components/admin/StatCard';
-import { useAppSelector } from '../../redux/hooks';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
+import { logout } from '../../redux/slices/authSlice';
 import { colors, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<any, 'AdminDashboard'>;
 
 export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
+  const dispatch = useAppDispatch();
   const { orders } = useAppSelector((state) => state.order);
   const { items } = useAppSelector((state) => state.food);
+
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: () => {
+          dispatch(logout());
+          Alert.alert('Success', 'You have been logged out', [
+            { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Auth', params: { screen: 'Closing' } }] }) },
+          ]);
+        },
+      },
+    ]);
+  };
 
   // Calculate stats
   const totalOrders = orders.length;
@@ -49,7 +68,7 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+        <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
@@ -57,7 +76,9 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Admin Dashboard</Text>
-        <View style={styles.backButton} />
+        <TouchableOpacity style={styles.backButton} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={22} color={colors.error} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -190,6 +211,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.md,
+    flexGrow: 1,
+    paddingBottom: 140,
   },
   statsGrid: {
     flexDirection: 'row',

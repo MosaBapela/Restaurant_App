@@ -113,6 +113,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.lg,
+    flexGrow: 1,
+    paddingBottom: 140,
   },
   saveButton: {
     marginTop: spacing.lg,

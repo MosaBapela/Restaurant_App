@@ -2,13 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React from 'react';
 import {
-  Alert,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { CartItem as CartItemComponent } from '../../components/cart/CartItem';
 import { CartSummary } from '../../components/cart/CartSummary';
@@ -180,6 +180,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.md,
+    flexGrow: 1,
+    paddingBottom: 140,
   },
   itemsContainer: {
     marginBottom: spacing.lg,

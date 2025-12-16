@@ -216,6 +216,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.md,
+    flexGrow: 1,
+    paddingBottom: 140,
   },
   terms: {
     fontSize: typography.sizes.sm,
