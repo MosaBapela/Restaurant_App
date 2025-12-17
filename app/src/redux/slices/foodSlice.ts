@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { mockFoodItems } from '../../data/mockData';
 import { FoodCategory, FoodItem } from '../../types/food.types';
 
 interface FoodState {
@@ -11,8 +12,10 @@ interface FoodState {
 }
 
 const initialState: FoodState = {
-  items: [],
-  filteredItems: [],
+  // Preload with mock data so admin screens and other parts of the app
+  // can access food items even if HomeScreen hasn't mounted yet.
+  items: mockFoodItems,
+  filteredItems: mockFoodItems,
   selectedCategory: 'All',
   searchQuery: '',
   isLoading: false,
