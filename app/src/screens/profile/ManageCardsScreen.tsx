@@ -16,6 +16,7 @@ import { Input } from '../../components/common/Input';
 import { CardDisplay } from '../../components/profile/CardDisplay';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { updateUser } from '../../redux/slices/authSlice';
+import { addPaymentCard, deletePaymentCard } from '../../services/firebase/profileService';
 import { colors, spacing, typography } from '../../theme';
 import { PaymentCard } from '../../types/user.types';
 
@@ -44,6 +45,8 @@ export const ManageCardsScreen: React.FC<Props> = ({ navigation }) => {
       '$1 **** **** $2'
     );
 
+    if (!user) return;
+
     const newCard: PaymentCard = {
       id: `card_${Date.now()}`,
       cardNumber: maskedNumber,
@@ -53,12 +56,21 @@ export const ManageCardsScreen: React.FC<Props> = ({ navigation }) => {
       isDefault: user?.paymentCards.length === 0,
     };
 
-    const updatedCards = [...(user?.paymentCards || []), newCard];
-    dispatch(updateUser({ paymentCards: updatedCards }));
-    
     setShowAddModal(false);
     setFormData({ cardNumber: '', cardHolder: '', expiryDate: '', cvv: '' });
-    Alert.alert('Success', 'Card added successfully');
+
+    // Persist to Firestore
+    (async () => {
+      try {
+        const updatedUser = await addPaymentCard(user.uid, newCard);
+        dispatch(updateUser(updatedUser));
+        Alert.alert('Success', 'Card added successfully');
+      } catch (err: any) {
+        // eslint-disable-next-line no-console
+        console.error('[ManageCards] add failed', err);
+        Alert.alert('Add card failed', err?.message ?? String(err));
+      }
+    })();
   };
 
   const handleDeleteCard = (cardId: string) => {
@@ -71,10 +83,17 @@ export const ManageCardsScreen: React.FC<Props> = ({ navigation }) => {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            const updatedCards = user?.paymentCards.filter(
-              (card) => card.id !== cardId
-            );
-            dispatch(updateUser({ paymentCards: updatedCards }));
+            if (!user) return;
+            (async () => {
+              try {
+                const updatedUser = await deletePaymentCard(user.uid, cardId);
+                dispatch(updateUser(updatedUser));
+              } catch (err: any) {
+                // eslint-disable-next-line no-console
+                console.error('[ManageCards] delete failed', err);
+                Alert.alert('Delete failed', err?.message ?? String(err));
+              }
+            })();
           },
         },
       ]

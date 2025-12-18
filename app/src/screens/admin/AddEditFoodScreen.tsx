@@ -16,7 +16,12 @@ import { Button } from '../../components/common/Button';
 import { Header } from '../../components/common/Header';
 import { Input } from '../../components/common/Input';
 import { useAppDispatch } from '../../redux/hooks';
-import { addFoodItem, updateFoodItem } from '../../redux/slices/foodSlice';
+import { addFoodItem as reduxAddFoodItem, updateFoodItem as reduxUpdateFoodItem } from '../../redux/slices/foodSlice';
+import localStorageService from '../../services/localStorageService';
+import {
+  addFoodItem as serviceAddFoodItem,
+  updateFoodItem as serviceUpdateFoodItem,
+} from '../../services/firebase/foodService';
 import { colors, spacing, typography } from '../../theme';
 import { FoodCategory, FoodItem } from '../../types/food.types';
 import { FOOD_CATEGORIES } from '../../utils/constants';
@@ -39,7 +44,7 @@ export const AddEditFoodScreen: React.FC<Props> = ({ navigation, route }) => {
   });
   const [loading, setLoading] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name || !formData.description || !formData.price) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
@@ -62,19 +67,57 @@ export const AddEditFoodScreen: React.FC<Props> = ({ navigation, route }) => {
       removableIngredients: editItem?.removableIngredients || [],
     };
 
-    setTimeout(() => {
+    try {
       if (isEditMode) {
-        dispatch(updateFoodItem(foodItem));
+        // Edit flow: save image locally first (if changed) then update Firestore via service
+        if (foodItem.image) {
+          try {
+            const savedUri = await localStorageService.saveImage(foodItem.image, foodItem.id);
+            foodItem.image = savedUri;
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn('[AddEditFood] failed to save image locally', e);
+          }
+        }
+
+        await serviceUpdateFoodItem(foodItem.id, { ...foodItem, price: Number(foodItem.price) });
+        dispatch(reduxUpdateFoodItem(foodItem));
       } else {
-        dispatch(addFoodItem(foodItem));
+        // Create flow: first add doc to Firestore to get an id, then save image using that id
+        const payload = { ...foodItem } as Omit<FoodItem, 'id'>;
+        // remove id if present accidentally
+        // price should be a number
+        payload.price = Number(payload.price);
+
+        const newId = await serviceAddFoodItem(payload);
+
+        let finalImage = payload.image;
+        if (payload.image) {
+          try {
+            const savedUri = await localStorageService.saveImage(payload.image, newId);
+            finalImage = savedUri;
+            // update the Firestore doc with the saved image URI
+            await serviceUpdateFoodItem(newId, { image: savedUri });
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn('[AddEditFood] failed to save image locally for new item', e);
+          }
+        }
+
+        const createdItem: FoodItem = { ...(payload as FoodItem), id: newId, image: finalImage };
+        dispatch(reduxAddFoodItem(createdItem));
       }
+
+      Alert.alert('Success', `Food item ${isEditMode ? 'updated' : 'added'} successfully`, [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } catch (err: any) {
+      // eslint-disable-next-line no-console
+      console.warn('[AddEditFood] save failed', err);
+      Alert.alert('Error', err?.message || 'Failed to save food item');
+    } finally {
       setLoading(false);
-      Alert.alert(
-        'Success',
-        `Food item ${isEditMode ? 'updated' : 'added'} successfully`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
-    }, 1000);
+    }
   };
 
   const updateField = (field: string, value: string | boolean) => {
@@ -96,25 +139,55 @@ export const AddEditFoodScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Image Preview */}
         <View style={styles.imageSection}>
           <Image source={{ uri: formData.image }} style={styles.image} />
-          <TouchableOpacity style={styles.changeImageButton} onPress={async () => {
-            // ask for permissions and launch image picker
-            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (status !== 'granted') {
-              Alert.alert('Permission required', 'Permission to access media library is required to select images.');
-              return;
-            }
-            const result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              allowsEditing: true,
-              quality: 0.8,
-            });
-            if (!result.canceled) {
-              // expo-image-picker v14+ returns assets array
-              // fallback to result.uri for older versions
-              const uri = (result.assets && result.assets[0]?.uri) || (result as any).uri;
-              if (uri) updateField('image', uri);
-            }
-          }}>
+          <TouchableOpacity
+            style={styles.changeImageButton}
+            onPress={async () => {
+              try {
+                // ask for permissions and launch image picker
+                const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (status !== 'granted') {
+                  Alert.alert('Permission required', 'Permission to access media library is required to select images.');
+                  return;
+                }
+
+                const result = await ImagePicker.launchImageLibraryAsync({
+                  mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                  allowsEditing: true,
+                  quality: 0.8,
+                });
+
+                if (!result.canceled) {
+                  // expo-image-picker v14+ returns assets array
+                  // fallback to result.uri for older versions
+                  const uri = (result.assets && result.assets[0]?.uri) || (result as any).uri;
+                  if (uri) {
+                    updateField('image', uri);
+                    return;
+                  }
+                }
+
+                // Fallback for web or unexpected results: use a native file input
+                if (typeof document !== 'undefined') {
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = 'image/*,video/*';
+                  input.onchange = () => {
+                    const file = input.files && input.files[0];
+                    if (!file) return;
+                    // create an object URL to preview and upload later
+                    const objectUrl = URL.createObjectURL(file);
+                    updateField('image', objectUrl);
+                  };
+                  input.click();
+                }
+              } catch (err: any) {
+                // Provide a helpful error message rather than letting the app crash
+                // eslint-disable-next-line no-console
+                console.warn('[AddEditFood] image picker failed', err);
+                Alert.alert('Image picker error', err?.message || String(err));
+              }
+            }}
+          >
             <Ionicons name="camera-outline" size={24} color={colors.white} />
           </TouchableOpacity>
         </View>

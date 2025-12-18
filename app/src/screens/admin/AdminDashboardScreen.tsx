@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React from 'react';
+import React, { useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     SafeAreaView,
     ScrollView,
@@ -14,6 +15,8 @@ import { ChartSection } from '../../components/admin/ChartSection';
 import { StatCard } from '../../components/admin/StatCard';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { logout } from '../../redux/slices/authSlice';
+import { signOutUser } from '../../services/firebase/authService';
+import { auth } from '../../services/firebase/config';
 import { colors, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<any, 'AdminDashboard'>;
@@ -22,6 +25,7 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { orders } = useAppSelector((state) => state.order);
   const { items } = useAppSelector((state) => state.food);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -29,8 +33,28 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
       {
         text: 'Logout',
         style: 'destructive',
-        onPress: () => {
+        onPress: async () => {
+          setLoggingOut(true);
+          // Debug
+          // eslint-disable-next-line no-console
+          console.log('[admin logout] before signOut, auth.currentUser =', auth?.currentUser);
+
+          // Optimistic logout: clear local state immediately
           dispatch(logout());
+
+          // Sign out in background
+          (async () => {
+            try {
+              await signOutUser();
+              // eslint-disable-next-line no-console
+              console.log('[admin logout] signOut succeeded');
+            } catch (err: any) {
+              // eslint-disable-next-line no-console
+              console.warn('[admin logout] signOut failed', err);
+            }
+          })();
+
+          setLoggingOut(false);
           Alert.alert('Success', 'You have been logged out', [
             { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Auth', params: { screen: 'Closing' } }] }) },
           ]);
@@ -77,7 +101,11 @@ export const AdminDashboardScreen: React.FC<Props> = ({ navigation }) => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Admin Dashboard</Text>
         <TouchableOpacity style={styles.backButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={22} color={colors.error} />
+          {loggingOut ? (
+            <ActivityIndicator size="small" color={colors.error} />
+          ) : (
+            <Ionicons name="log-out-outline" size={22} color={colors.error} />
+          )}
         </TouchableOpacity>
       </View>
 

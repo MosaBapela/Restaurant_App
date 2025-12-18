@@ -17,7 +17,9 @@ import { PaymentMethodSelector } from '../../components/checkout/PaymentMethodSe
 import { Button } from '../../components/common/Button';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { clearCart } from '../../redux/slices/cartSlice';
-import { placeOrderStart, placeOrderSuccess } from '../../redux/slices/orderSlice';
+import { placeOrderStart, placeOrderSuccess, placeOrderFailure } from '../../redux/slices/orderSlice';
+import { createOrder } from '../../services/firebase/orderService';
+import paymentService from '../../services/payment/paymentService';
 import { setSelectedAddress, setSelectedCard } from '../../redux/slices/profileSlice';
 import { colors, spacing, typography } from '../../theme';
 import { Order, OrderItem } from '../../types/order.types';
@@ -89,8 +91,7 @@ export const CheckoutScreen: React.FC<Props> = ({ navigation }) => {
     setLoading(true);
     dispatch(placeOrderStart());
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
       const orderItems: OrderItem[] = items.map((item) => ({
         foodItemId: item.foodItem.id,
         foodItemName: item.foodItem.name,
@@ -99,27 +100,57 @@ export const CheckoutScreen: React.FC<Props> = ({ navigation }) => {
         customization: item.customization,
       }));
 
-      const newOrder: Order = {
-        id: `ORD${Date.now()}`,
+      const now = Date.now();
+      const orderPayload: Omit<Order, 'id'> = {
         userId: user!.uid,
         userName: `${user!.name} ${user!.surname}`,
         userEmail: user!.email,
         userContact: user!.contactNumber,
         items: orderItems,
-        deliveryAddress: selectedAddress,
-        paymentCard: selectedCard,
+        deliveryAddress: selectedAddress as Address,
+        paymentCard: selectedCard as PaymentCard,
         totalAmount: calculateTotal(),
         status: 'pending',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        estimatedDeliveryTime: Date.now() + 45 * 60 * 1000, // 45 minutes
+        createdAt: now,
+        updatedAt: now,
+        estimatedDeliveryTime: now + 45 * 60 * 1000,
       };
 
-      dispatch(placeOrderSuccess(newOrder));
+      // Process payment (stub or stripe server). If payment succeeds we'll mark order confirmed.
+      let paymentResult;
+      try {
+        paymentResult = await paymentService.processPayment(orderPayload.totalAmount, selectedCard as any, { orderId: undefined });
+      } catch (payErr: any) {
+        // Payment failed; show error and abort
+        setLoading(false);
+        const message = payErr?.message ?? String(payErr);
+        dispatch(placeOrderFailure(message));
+        Alert.alert('Payment failed', message);
+        return;
+      }
+
+      if (paymentResult && paymentResult.success) {
+        (orderPayload as any).paymentTransactionId = paymentResult.transactionId;
+        orderPayload.status = 'confirmed';
+      } else {
+        // mark pending if payment did not succeed
+        orderPayload.status = 'pending';
+      }
+
+      // Persist to Firestore
+      const newId = await createOrder(orderPayload);
+
+      const createdOrder: Order = { ...(orderPayload as Order), id: newId };
+      dispatch(placeOrderSuccess(createdOrder));
       dispatch(clearCart());
       setLoading(false);
-      navigation.replace('OrderSuccess', { orderId: newOrder.id });
-    }, 2000);
+      navigation.replace('OrderSuccess', { orderId: createdOrder.id });
+    } catch (err: any) {
+      setLoading(false);
+      const message = err?.message ?? String(err);
+      dispatch(placeOrderFailure(message));
+      Alert.alert('Order failed', message);
+    }
   };
 
   if (!user) {

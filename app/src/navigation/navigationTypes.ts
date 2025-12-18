@@ -21,6 +21,7 @@ export type CartStackParamList = {
 
 export type ProfileStackParamList = {
   Profile: undefined;
+  ProfileDebug: undefined;
   EditProfile: undefined;
   OrderHistory: undefined;
   ManageAddresses: { addNew?: boolean };

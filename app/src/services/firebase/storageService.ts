@@ -1,139 +1,53 @@
-import {
-    deleteObject,
-    getDownloadURL,
-    ref,
-    uploadBytes,
-} from 'firebase/storage';
 import { storage } from './config';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { timeAsync } from './timing';
 
 /**
- * Upload image to Firebase Storage
+ * Upload a file (image) located at `fileUri` to Firebase Storage at `path`.
+ * Works with Expo/React Native URIs (file:// or local asset) and web blob URLs.
+ * Returns the publicly-accessible download URL.
+ *
+ * Example: await uploadImage(`food_images/${Date.now()}_pizza.jpg`, uri)
  */
-export const uploadImage = async (
-  uri: string,
-  path: string
-): Promise<string> => {
-  try {
-    // Convert URI to blob
-    const response = await fetch(uri);
+export const uploadImage = async (path: string, fileUri: string, contentType?: string): Promise<string> => {
+  if (!storage) throw new Error('Firebase Storage not initialized');
+
+  return timeAsync(`storage:upload:${path}`, async () => {
+    // Convert local file URI to Blob (works in Expo and browsers)
+    const response = await fetch(fileUri);
     const blob = await response.blob();
 
-    // Create storage reference
-    const storageRef = ref(storage, path);
-
-    // Upload file
-    await uploadBytes(storageRef, blob);
-
-    // Get download URL
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
-  } catch (error: any) {
-    throw new Error(error.message || 'Failed to upload image');
-  }
+  const storageRef = ref(storage!, path);
+    // Upload the blob
+    await uploadBytes(storageRef, blob, { contentType: contentType ?? blob.type ?? 'application/octet-stream' });
+    // Return download URL
+    const url = await getDownloadURL(storageRef);
+    return url;
+  });
 };
 
-/**
- * Delete image from Firebase Storage
- */
-export const deleteImage = async (path: string): Promise<void> => {
-  try {
-    const storageRef = ref(storage, path);
+/** Delete a file at given storage path */
+export const deleteFile = async (path: string): Promise<void> => {
+  if (!storage) throw new Error('Firebase Storage not initialized');
+  return timeAsync(`storage:delete:${path}`, async () => {
+  const storageRef = ref(storage!, path);
     await deleteObject(storageRef);
-  } catch (error: any) {
-    throw new Error(error.message || 'Failed to delete image');
-  }
+  });
 };
 
-/**
- * Upload food image
- */
-export const uploadFoodImage = async (
-  uri: string,
-  foodId: string
-): Promise<string> => {
+export const uploadFoodImage = async (fileUri: string, foodId: string): Promise<string> => {
   const path = `food_images/${foodId}_${Date.now()}.jpg`;
-  return uploadImage(uri, path);
+  return uploadImage(path, fileUri);
 };
 
-/**
- * Upload profile image
- */
-export const uploadProfileImage = async (
-  uri: string,
-  userId: string
-): Promise<string> => {
-  const path = `profile_images/${userId}.jpg`;
-  return uploadImage(uri, path);
+export const uploadProfileImage = async (fileUri: string, userId: string): Promise<string> => {
+  const path = `profile_images/${userId}_${Date.now()}.jpg`;
+  return uploadImage(path, fileUri);
 };
 
-// ==========================================
-// FILE: src/services/payment/paymentService.ts
-// ==========================================
-/**
- * Payment Service
- * This is a placeholder for payment integration
- * Integrate with Stripe, PayPal, or other payment providers
- */
-
-export interface PaymentResult {
-  success: boolean;
-  transactionId?: string;
-  error?: string;
-}
-
-/**
- * Process payment
- * Replace with actual payment gateway integration
- */
-export const processPayment = async (
-  amount: number,
-  cardToken: string
-): Promise<PaymentResult> => {
-  try {
-    // Simulate payment processing
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // Mock success response
-    return {
-      success: true,
-      transactionId: `txn_${Date.now()}`,
-    };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'Payment failed',
-    };
-  }
-};
-
-/**
- * Refund payment
- * Replace with actual payment gateway integration
- */
-export const refundPayment = async (
-  transactionId: string
-): Promise<PaymentResult> => {
-  try {
-    // Simulate refund processing
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    return {
-      success: true,
-      transactionId: `ref_${Date.now()}`,
-    };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'Refund failed',
-    };
-  }
-};
-
-/**
- * Validate card
- * Basic validation before payment
- */
-export const validateCard = (cardNumber: string): boolean => {
-  const cleaned = cardNumber.replace(/\s/g, '');
-  return /^\d{16}$/.test(cleaned);
+export default {
+  uploadImage,
+  deleteFile,
+  uploadFoodImage,
+  uploadProfileImage,
 };

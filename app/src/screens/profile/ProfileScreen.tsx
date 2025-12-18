@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React from 'react';
+import React, { useState } from 'react';
 import {
     Alert,
     Image,
@@ -15,6 +15,8 @@ import { Button } from '../../components/common/Button';
 import { ProfileField } from '../../components/profile/ProfileField';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { logout } from '../../redux/slices/authSlice';
+import { signOutUser } from '../../services/firebase/authService';
+import { auth } from '../../services/firebase/config';
 import { colors, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<any, 'Profile'>;
@@ -22,6 +24,7 @@ type Props = NativeStackScreenProps<any, 'Profile'>;
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -29,8 +32,28 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       {
         text: 'Logout',
         style: 'destructive',
-        onPress: () => {
+        onPress: async () => {
+          setLoggingOut(true);
+          // Optimistic logout: clear local state immediately for snappy UX,
+          // then sign out from Firebase in background and log any errors.
+          // Debug: log auth.currentUser before sign-out
+          // eslint-disable-next-line no-console
+          console.log('[logout] before signOut, auth.currentUser =', auth?.currentUser);
+
           dispatch(logout());
+
+          (async () => {
+            try {
+              await signOutUser();
+              // eslint-disable-next-line no-console
+              console.log('[logout] signOut succeeded');
+            } catch (err: any) {
+              // eslint-disable-next-line no-console
+              console.warn('[logout] signOut failed', err);
+            }
+          })();
+
+          setLoggingOut(false);
           Alert.alert('Success', 'You have been logged out', [
             { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Auth', params: { screen: 'Closing' } }] }) },
           ]);
@@ -188,6 +211,7 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           onPress={handleLogout}
           variant="outline"
           fullWidth
+          loading={loggingOut}
           style={styles.logoutButton}
         />
       </ScrollView>

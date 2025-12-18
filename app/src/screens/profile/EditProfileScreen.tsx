@@ -11,6 +11,7 @@ import { Header } from '../../components/common/Header';
 import { Input } from '../../components/common/Input';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { updateUser } from '../../redux/slices/authSlice';
+import { updateUserProfile } from '../../services/firebase/profileService';
 import { colors, spacing } from '../../theme';
 
 type Props = NativeStackScreenProps<any, 'EditProfile'>;
@@ -28,16 +29,23 @@ export const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
+    if (!user) return;
     setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      dispatch(updateUser(formData));
+    try {
+      // Call Firestore to update the authoritative user profile
+      const updated = await updateUserProfile(user.uid, formData as any);
+
+      // Update redux with the normalized user returned from Firestore
+      dispatch(updateUser(updated));
       setLoading(false);
       Alert.alert('Success', 'Profile updated successfully', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
-    }, 1000);
+    } catch (err: any) {
+      setLoading(false);
+      const message = err?.message ?? String(err);
+      Alert.alert('Update failed', message);
+    }
   };
 
   const updateField = (field: string, value: string) => {

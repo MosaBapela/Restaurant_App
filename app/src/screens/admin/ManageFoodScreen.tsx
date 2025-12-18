@@ -12,9 +12,15 @@ import {
     View,
 } from 'react-native';
 import { EmptyState } from '../../components/common/EmptyState';
+import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Header } from '../../components/common/Header';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
-import { deleteFoodItem } from '../../redux/slices/foodSlice';
+import { setFoodItems, deleteFoodItem as reduxDeleteFoodItem } from '../../redux/slices/foodSlice';
+import {
+  fetchFoodItems as serviceFetchFoodItems,
+  deleteFoodItem as serviceDeleteFoodItem,
+} from '../../services/firebase/foodService';
+import { auth } from '../../services/firebase/config';
 import { colors, spacing, typography } from '../../theme';
 import { FoodItem } from '../../types/food.types';
 import { CURRENCY_SYMBOL } from '../../utils/constants';
@@ -25,6 +31,8 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { items } = useAppSelector((state) => state.food);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const filteredItems =
     selectedCategory === 'All'
@@ -40,14 +48,62 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
         {
           text: 'Delete',
           style: 'destructive',
-            onPress: () => {
-              dispatch(deleteFoodItem(item.id));
-              Alert.alert('Deleted', `${item.name} has been deleted.`);
+            onPress: async () => {
+              // Log auth state for debugging web vs native
+              // eslint-disable-next-line no-console
+              console.debug('[ManageFood] attempting delete', { uid: auth?.currentUser?.uid ?? null, email: auth?.currentUser?.email ?? null });
+
+              // Optimistic delete: remove from UI immediately then call service.
+              const prev = items.slice();
+              dispatch(reduxDeleteFoodItem(item.id));
+              try {
+                await serviceDeleteFoodItem(item.id);
+                Alert.alert('Deleted', `${item.name} has been deleted.`);
+              } catch (err: any) {
+                // rollback on failure
+                // eslint-disable-next-line no-console
+                console.warn('[ManageFood] optimistic delete failed, rolling back', err);
+                dispatch(setFoodItems(prev));
+                Alert.alert('Error', err?.message || 'Failed to delete item');
+              }
             },
         },
       ]
     );
   };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const list = await serviceFetchFoodItems();
+      dispatch(setFoodItems(list));
+    } catch (err: any) {
+      // eslint-disable-next-line no-console
+      console.warn('[ManageFood] refresh failed', err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  React.useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        setLoading(true);
+        const list = await serviceFetchFoodItems();
+        if (mounted) dispatch(setFoodItems(list));
+      } catch (err: any) {
+        // eslint-disable-next-line no-console
+        console.warn('[ManageFood] fetch failed', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [dispatch]);
 
   const handleEditItem = (item: FoodItem) => {
     navigation.navigate('AddEditFood', { foodItem: item });
@@ -107,6 +163,8 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
         onRightPress={() => navigation.navigate('AddEditFood')}
       />
 
+      {loading && <LoadingSpinner />}
+
       {items.length === 0 ? (
         <EmptyState
           icon="fast-food-outline"
@@ -120,6 +178,8 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
         />
       )}
     </SafeAreaView>

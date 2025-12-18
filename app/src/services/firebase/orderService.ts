@@ -1,17 +1,17 @@
 import {
-    addDoc,
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    orderBy,
-    query,
-    Timestamp,
-    updateDoc,
-    where,
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+  Timestamp,
+  updateDoc,
+  where,
 } from 'firebase/firestore';
 import { Order, OrderStatus } from '../../types/order.types';
-import { db } from './config';
+import { db, auth } from './config';
 
 const ORDERS_COLLECTION = 'orders';
 
@@ -22,13 +22,15 @@ export const createOrder = async (
   order: Omit<Order, 'id'>
 ): Promise<string> => {
   try {
-    const docRef = await addDoc(collection(db, ORDERS_COLLECTION), {
+    const docRef = await addDoc(collection(db!, ORDERS_COLLECTION), {
       ...order,
       createdAt: Timestamp.fromMillis(order.createdAt),
       updatedAt: Timestamp.fromMillis(order.updatedAt),
     });
     return docRef.id;
   } catch (error: any) {
+    // eslint-disable-next-line no-console
+    console.error('[orderService] createOrder failed', { error, currentUser: auth?.currentUser?.uid ?? null });
     throw new Error(error.message || 'Failed to create order');
   }
 };
@@ -38,11 +40,7 @@ export const createOrder = async (
  */
 export const fetchUserOrders = async (userId: string): Promise<Order[]> => {
   try {
-    const q = query(
-      collection(db, ORDERS_COLLECTION),
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
-    );
+    const q = query(collection(db!, ORDERS_COLLECTION), where('userId', '==', userId), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map((doc) => {
       const data = doc.data();
@@ -54,6 +52,8 @@ export const fetchUserOrders = async (userId: string): Promise<Order[]> => {
       } as Order;
     });
   } catch (error: any) {
+    // eslint-disable-next-line no-console
+    console.error('[orderService] fetchUserOrders failed', { userId, error, currentUser: auth?.currentUser?.uid ?? null });
     throw new Error(error.message || 'Failed to fetch orders');
   }
 };
@@ -63,10 +63,7 @@ export const fetchUserOrders = async (userId: string): Promise<Order[]> => {
  */
 export const fetchAllOrders = async (): Promise<Order[]> => {
   try {
-    const q = query(
-      collection(db, ORDERS_COLLECTION),
-      orderBy('createdAt', 'desc')
-    );
+    const q = query(collection(db!, ORDERS_COLLECTION), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map((doc) => {
       const data = doc.data();
@@ -78,6 +75,8 @@ export const fetchAllOrders = async (): Promise<Order[]> => {
       } as Order;
     });
   } catch (error: any) {
+    // eslint-disable-next-line no-console
+    console.error('[orderService] fetchAllOrders failed', { error, currentUser: auth?.currentUser?.uid ?? null });
     throw new Error(error.message || 'Failed to fetch orders');
   }
 };
@@ -87,7 +86,7 @@ export const fetchAllOrders = async (): Promise<Order[]> => {
  */
 export const fetchOrder = async (orderId: string): Promise<Order> => {
   try {
-    const docRef = doc(db, ORDERS_COLLECTION, orderId);
+  const docRef = doc(db!, ORDERS_COLLECTION, orderId);
     const docSnap = await getDoc(docRef);
     
     if (!docSnap.exists()) {
@@ -102,6 +101,8 @@ export const fetchOrder = async (orderId: string): Promise<Order> => {
       updatedAt: data.updatedAt.toMillis(),
     } as Order;
   } catch (error: any) {
+    // eslint-disable-next-line no-console
+    console.error('[orderService] fetchOrder failed', { orderId, error, currentUser: auth?.currentUser?.uid ?? null });
     throw new Error(error.message || 'Failed to fetch order');
   }
 };
@@ -114,12 +115,14 @@ export const updateOrderStatus = async (
   status: OrderStatus
 ): Promise<void> => {
   try {
-    const docRef = doc(db, ORDERS_COLLECTION, orderId);
+  const docRef = doc(db!, ORDERS_COLLECTION, orderId);
     await updateDoc(docRef, {
       status,
       updatedAt: Timestamp.now(),
     });
   } catch (error: any) {
+    // eslint-disable-next-line no-console
+    console.error('[orderService] updateOrderStatus failed', { orderId, status, error, currentUser: auth?.currentUser?.uid ?? null });
     throw new Error(error.message || 'Failed to update order status');
   }
 };

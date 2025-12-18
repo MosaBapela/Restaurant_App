@@ -1,19 +1,24 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import {
-    FlatList,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  FlatList,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Alert,
 } from 'react-native';
 import { OrderCard } from '../../components/admin/OrderCard';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Header } from '../../components/common/Header';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { updateOrderStatus } from '../../redux/slices/orderSlice';
+import { setOrders } from '../../redux/slices/orderSlice';
 import type { RootState } from '../../redux/store';
+import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { fetchAllOrders as serviceFetchAllOrders, updateOrderStatus as serviceUpdateOrderStatus } from '../../services/firebase/orderService';
+import { auth } from '../../services/firebase/config';
 import { colors, spacing, typography } from '../../theme';
 import { Order, OrderStatus } from '../../types/order.types';
 
@@ -43,14 +48,65 @@ export const OrderManagementScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { orders } = useAppSelector((state: RootState) => state.order);
   const [selectedFilter, setSelectedFilter] = useState<OrderStatus | 'all'>('all');
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const filteredOrders =
     selectedFilter === 'all'
       ? orders
         : orders.filter((order: Order) => order.status === selectedFilter);
 
-  const handleUpdateStatus = (orderId: string, status: OrderStatus) => {
+  const handleUpdateStatus = async (orderId: string, status: OrderStatus) => {
+    // Optimistic update in Redux
     dispatch(updateOrderStatus({ orderId, status }));
+    try {
+      await serviceUpdateOrderStatus(orderId, status);
+    } catch (err: any) {
+      // Log auth state for debugging
+      // eslint-disable-next-line no-console
+      console.debug('[OrderManagement] update status failed for', { orderId, uid: auth?.currentUser?.uid ?? null });
+      // eslint-disable-next-line no-console
+      console.warn('[OrderManagement] update status failed, refreshing orders', err);
+      // rollback by reloading orders from server
+      try {
+        const list = await serviceFetchAllOrders();
+        dispatch(setOrders(list));
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[OrderManagement] refresh after failed update also failed', e);
+      }
+      Alert.alert('Error', err?.message || 'Failed to update order status');
+    }
+  };
+
+  const loadOrders = async () => {
+    setLoading(true);
+    try {
+      const list = await serviceFetchAllOrders();
+      dispatch(setOrders(list));
+    } catch (err: any) {
+      // eslint-disable-next-line no-console
+      console.warn('[OrderManagement] fetch failed', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    loadOrders();
+  }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const list = await serviceFetchAllOrders();
+      dispatch(setOrders(list));
+    } catch (err: any) {
+      // eslint-disable-next-line no-console
+      console.warn('[OrderManagement] refresh failed', err);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const renderOrder = ({ item }: { item: Order }) => (
@@ -98,6 +154,7 @@ export const OrderManagementScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       {/* Orders List */}
+      {loading && <LoadingSpinner />}
       {filteredOrders.length === 0 ? (
         <EmptyState
           icon="receipt-outline"
@@ -115,6 +172,8 @@ export const OrderManagementScreen: React.FC<Props> = ({ navigation }) => {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
         />
       )}
     </SafeAreaView>

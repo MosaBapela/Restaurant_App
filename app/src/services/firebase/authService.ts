@@ -1,106 +1,103 @@
 import {
-    createUserWithEmailAndPassword,
-    User as FirebaseUser,
-    sendPasswordResetEmail,
-    signInWithEmailAndPassword,
-    signOut,
-    updateProfile,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  signInWithEmailAndPassword,
+  UserCredential,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth } from './config';
+import { createUserProfile } from './profileService';
 import { User } from '../../types/user.types';
-import { auth, db } from './config';
+import { timeAsync } from './timing';
+import { Platform } from 'react-native';
+
+async function quickNetworkCheck(timeout = 3000) {
+  // On web, many third-party hosts (e.g. google.com) block CORS for browser fetch probes.
+  // Use navigator.onLine as a lightweight heuristic for connectivity in browsers.
+  if (Platform.OS === 'web') {
+    try {
+      // navigator may be undefined in some test envs
+      // eslint-disable-next-line no-undef
+      return (globalThis as any).navigator?.onLine === true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // For native runtimes, perform a short fetch to a CORS-friendly endpoint.
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    // gstatic generate_204 is lightweight and commonly reachable.
+    const res = await fetch('https://www.gstatic.com/generate_204', { method: 'GET', signal: controller.signal });
+    clearTimeout(id);
+    return res.ok || res.status === 204;
+  } catch (err) {
+    clearTimeout(id);
+    return false;
+  }
+}
 
 /**
- * Register a new user
+ * Register a new user with email and password. Returns the UserCredential.
  */
-export const registerUser = async (
+export async function registerWithEmail(
   email: string,
   password: string,
-  userData: Omit<User, 'uid' | 'email' | 'createdAt'>
-): Promise<User> => {
+  profileData: { name?: string; surname?: string; contactNumber?: string; addresses?: any[] } = {}
+): Promise<{ credential: UserCredential; profile: User | null }> {
+  if (!auth) throw new Error('Firebase Auth not initialized. Check your EXPO_PUBLIC_FIREBASE_* env vars.');
+  const credential = await timeAsync('createUserWithEmailAndPassword', () =>
+    createUserWithEmailAndPassword(auth!, email, password)
+  );
+
+  let profile: User | null = null;
   try {
-    // Create auth user
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
+    profile = await timeAsync('createUserProfile', () =>
+      createUserProfile(credential.user.uid, {
+        email: credential.user.email ?? null,
+        name: profileData.name ?? null,
+        surname: profileData.surname ?? null,
+        contactNumber: profileData.contactNumber ?? null,
+        addresses: profileData.addresses ?? [],
+      })
     );
-    const firebaseUser = userCredential.user;
-
-    // Update display name
-    await updateProfile(firebaseUser, {
-      displayName: `${userData.name} ${userData.surname}`,
-    });
-
-    // Create user document
-    const newUser: User = {
-      uid: firebaseUser.uid,
-      email: firebaseUser.email!,
-      ...userData,
-      createdAt: Date.now(),
-    };
-
-    await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
-
-    return newUser;
-  } catch (error: any) {
-    throw new Error(error.message || 'Failed to register user');
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[auth] createUserProfile failed:', (err as Error).message);
   }
-};
+  return { credential, profile };
+}
 
 /**
- * Login user
+ * Sign in an existing user with email and password. Returns the UserCredential.
  */
-export const loginUser = async (
-  email: string,
-  password: string
-): Promise<User> => {
+export async function loginWithEmail(email: string, password: string): Promise<UserCredential> {
+  if (!auth) throw new Error('Firebase Auth not initialized. Check your EXPO_PUBLIC_FIREBASE_* env vars.');
   try {
-    const userCredential = await signInWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-    const firebaseUser = userCredential.user;
-
-    // Fetch user data from Firestore
-    const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-    
-    if (!userDoc.exists()) {
-      throw new Error('User data not found');
+    // Diagnostic: quick network probe to give a clearer error message on emulator/dev
+    const canReach = await quickNetworkCheck();
+    if (!canReach) {
+      // eslint-disable-next-line no-console
+      console.error('[auth] network check failed: runtime cannot reach external https endpoints.');
+      throw new Error('Network appears to be unavailable from the JS runtime (emulator/device). Please check emulator network, device internet, or Windows firewall and restart the Metro bundler.');
     }
-
-    return userDoc.data() as User;
-  } catch (error: any) {
-    throw new Error(error.message || 'Failed to login');
+    return await timeAsync('signInWithEmail', () => signInWithEmailAndPassword(auth!, email, password));
+  } catch (err: any) {
+    // Log Firebase error info (useful during dev to inspect REST response body)
+    // eslint-disable-next-line no-console
+    console.error('[auth] signInWithEmail error:', {
+      message: err?.message,
+      code: err?.code,
+      customData: err?.customData,
+      serverResponse: err?.serverResponse ?? err,
+    });
+    throw err;
   }
-};
+}
 
-/**
- * Logout user
- */
-export const logoutUser = async (): Promise<void> => {
-  try {
-    await signOut(auth);
-  } catch (error: any) {
-    throw new Error(error.message || 'Failed to logout');
-  }
-};
-
-/**
- * Send password reset email
- */
-export const resetPassword = async (email: string): Promise<void> => {
-  try {
-    await sendPasswordResetEmail(auth, email);
-  } catch (error: any) {
-    throw new Error(error.message || 'Failed to send reset email');
-  }
-};
-
-/**
- * Get current user
- */
-export const getCurrentUser = (): FirebaseUser | null => {
-  return auth.currentUser;
-};
+/** Sign out current user */
+export async function signOutUser(): Promise<void> {
+  if (!auth) return;
+  // Allow callers to perform optimistic logout and call signOut in background.
+  await timeAsync('signOut', () => firebaseSignOut(auth!));
+}

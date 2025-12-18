@@ -12,9 +12,11 @@ import {
 } from 'react-native';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
-import { mockAdminUser, mockUser } from '../../data/mockData';
 import { useAppDispatch } from '../../redux/hooks';
-import { loginSuccess } from '../../redux/slices/authSlice';
+import { loginSuccess, updateUser } from '../../redux/slices/authSlice';
+import { loginWithEmail } from '../../services/firebase/authService';
+import { getUserProfile } from '../../services/firebase/profileService';
+import { timeAsync } from '../../services/firebase/timing';
 import { colors, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<any, 'Login'>;
@@ -45,20 +47,52 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
     if (hasError) return;
 
     setLoading(true);
+    try {
+      const credential = await loginWithEmail(email, password);
+      const firebaseUser = credential.user;
 
-    // Simulate API call
-    setTimeout(() => {
-      // Check if admin login
-      if (email.toLowerCase() === 'admin@restaurant.com') {
-        dispatch(loginSuccess(mockAdminUser));
-      } else {
-        dispatch(loginSuccess(mockUser));
-      }
+      // Optimistic UI: dispatch minimal user immediately so navigation feels instant
+      const optimisticUser = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email ?? email,
+        name: '',
+        surname: '',
+        contactNumber: '',
+        addresses: [],
+        paymentCards: [],
+        createdAt: Date.now(),
+        isAdmin: false,
+      };
+      dispatch(loginSuccess(optimisticUser));
+
+      // Navigate immediately
       setLoading(false);
+      const isAdminEmail = email.toLowerCase() === 'admin@restaurant.com';
       Alert.alert('Success', 'Logged in successfully', [
-        { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: email.toLowerCase() === 'admin@restaurant.com' ? 'Admin' : 'Main' }] }) },
+        { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: isAdminEmail ? 'Admin' : 'Main' }] }) },
       ]);
-    }, 1000);
+
+      // Background reconciliation: fetch real profile and update the Redux store when available.
+      (async () => {
+        try {
+          const profile = await timeAsync('getUserProfile', () => getUserProfile(firebaseUser.uid));
+          if (profile) {
+            dispatch(updateUser(profile));
+            // If this account is an admin, navigate to Admin stack (reconcile navigation)
+            if (profile.isAdmin) {
+              navigation.reset({ index: 0, routes: [{ name: 'Admin' }] });
+            }
+          }
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn('[login] background reconciliation failed', err);
+        }
+      })();
+    } catch (err: any) {
+      setLoading(false);
+      const message = err?.message ?? String(err);
+      Alert.alert('Login failed', message);
+    }
   };
 
   return (

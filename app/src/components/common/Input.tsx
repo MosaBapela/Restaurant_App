@@ -52,7 +52,7 @@ export const Input: React.FC<InputProps> = ({
           secureTextEntry={isPassword && !showPassword}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          {...props}
+          {...filterResponderProps(props)}
         />
         {isPassword && (
           <TouchableOpacity
@@ -116,3 +116,15 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
 });
+
+function filterResponderProps(p: Record<string, any>) {
+  if (!p) return p;
+  const out: Record<string, any> = {};
+  for (const key of Object.keys(p)) {
+    // strip any React Native responder props which react-dom warns about when
+    // passed to DOM elements on web (e.g. onResponderGrant, onResponderMove...)
+    if (/^onResponder/i.test(key)) continue;
+    out[key] = p[key];
+  }
+  return out;
+}

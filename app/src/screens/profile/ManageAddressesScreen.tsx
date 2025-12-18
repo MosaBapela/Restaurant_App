@@ -16,6 +16,7 @@ import { Input } from '../../components/common/Input';
 import { AddressCard } from '../../components/profile/AddressCard';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { updateUser } from '../../redux/slices/authSlice';
+import { addUserAddress, deleteUserAddress } from '../../services/firebase/profileService';
 import { colors, spacing, typography } from '../../theme';
 import { Address } from '../../types/user.types';
 
@@ -38,18 +39,28 @@ export const ManageAddressesScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
+    if (!user) return;
     const newAddress: Address = {
       id: `addr_${Date.now()}`,
       ...formData,
       isDefault: user?.addresses.length === 0,
     };
 
-    const updatedAddresses = [...(user?.addresses || []), newAddress];
-    dispatch(updateUser({ addresses: updatedAddresses }));
-    
     setShowAddModal(false);
     setFormData({ street: '', city: '', province: '', postalCode: '' });
-    Alert.alert('Success', 'Address added successfully');
+
+    // Persist to Firestore and update redux with returned user
+    (async () => {
+      try {
+        const updatedUser = await addUserAddress(user.uid, newAddress);
+        dispatch(updateUser(updatedUser));
+        Alert.alert('Success', 'Address added successfully');
+      } catch (err: any) {
+        // eslint-disable-next-line no-console
+        console.error('[ManageAddresses] add failed', err);
+        Alert.alert('Add address failed', err?.message ?? String(err));
+      }
+    })();
   };
 
   const handleDeleteAddress = (addressId: string) => {
@@ -62,10 +73,17 @@ export const ManageAddressesScreen: React.FC<Props> = ({ navigation }) => {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            const updatedAddresses = user?.addresses.filter(
-              (addr) => addr.id !== addressId
-            );
-            dispatch(updateUser({ addresses: updatedAddresses }));
+            if (!user) return;
+            (async () => {
+              try {
+                const updatedUser = await deleteUserAddress(user.uid, addressId);
+                dispatch(updateUser(updatedUser));
+              } catch (err: any) {
+                // eslint-disable-next-line no-console
+                console.error('[ManageAddresses] delete failed', err);
+                Alert.alert('Delete failed', err?.message ?? String(err));
+              }
+            })();
           },
         },
       ]

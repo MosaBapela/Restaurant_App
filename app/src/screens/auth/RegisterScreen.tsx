@@ -13,7 +13,9 @@ import {
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { useAppDispatch } from '../../redux/hooks';
-import { loginSuccess } from '../../redux/slices/authSlice';
+import { loginSuccess, updateUser } from '../../redux/slices/authSlice';
+import { registerWithEmail } from '../../services/firebase/authService';
+import { getUserProfile } from '../../services/firebase/profileService';
 import { colors, spacing, typography } from '../../theme';
 import { User } from '../../types/user.types';
 
@@ -60,12 +62,8 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     if (hasError) return;
 
     setLoading(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      const newUser: User = {
-        uid: `user_${Date.now()}`,
-        email: formData.email,
+    try {
+      const { credential, profile } = await registerWithEmail(formData.email, formData.password, {
         name: formData.name,
         surname: formData.surname,
         contactNumber: formData.contactNumber,
@@ -79,17 +77,61 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             isDefault: true,
           },
         ],
-        paymentCards: [],
-        createdAt: Date.now(),
-        isAdmin: false,
-      };
-      
-      dispatch(loginSuccess(newUser));
+      });
+
+      // Use the profile returned from registerWithEmail (created during registration) when available
+      const userPayload: User = profile
+        ? profile
+        : {
+            uid: credential.user.uid,
+            email: credential.user.email ?? formData.email,
+            name: formData.name,
+            surname: formData.surname,
+            contactNumber: formData.contactNumber,
+            addresses: [
+              {
+                id: 'addr1',
+                street: formData.street,
+                city: formData.city,
+                province: formData.province,
+                postalCode: formData.postalCode,
+                isDefault: true,
+              },
+            ],
+            paymentCards: [],
+            createdAt: Date.now(),
+            isAdmin: false,
+          };
+
+      // Optimistic UI: dispatch immediately so the app is responsive.
+      dispatch(loginSuccess(userPayload));
       setLoading(false);
+
+      // Background reconciliation: fetch the authoritative profile (serverTimestamp)
+      // and update the Redux user when available.
+      (async () => {
+        try {
+          const fresh = await getUserProfile(credential.user.uid);
+          if (fresh) {
+            dispatch(updateUser(fresh));
+            if (fresh.isAdmin) {
+              navigation.reset({ index: 0, routes: [{ name: 'Admin' }] });
+            }
+          }
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn('[register] background reconciliation failed', err);
+        }
+      })();
+
       Alert.alert('Success', 'Account created successfully', [
         { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Main' }] }) },
       ]);
-    }, 1000);
+    } catch (err: any) {
+      setLoading(false);
+      const message = err?.message ?? String(err);
+      Alert.alert('Registration failed', message);
+    }
   };
 
   const updateField = (field: string, value: string) => {
