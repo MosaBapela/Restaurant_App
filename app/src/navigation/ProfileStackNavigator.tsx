@@ -1,12 +1,12 @@
 import { createStackNavigator } from '@react-navigation/stack';
 import React from 'react';
+import { ProfileDebugScreen } from '../screens/debug/ProfileDebugScreen';
 import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
 import { HelpScreen } from '../screens/profile/HelpScreen';
 import { ManageAddressesScreen } from '../screens/profile/ManageAddressesScreen';
 import { ManageCardsScreen } from '../screens/profile/ManageCardsScreen';
 import { OrderHistoryScreen } from '../screens/profile/OrderHistoryScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
-import { ProfileDebugScreen } from '../screens/debug/ProfileDebugScreen';
 import { ProfileStackParamList } from './navigationTypes';
 
 const Stack = createStackNavigator<ProfileStackParamList>();

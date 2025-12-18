@@ -4,11 +4,11 @@ import {
   signInWithEmailAndPassword,
   UserCredential,
 } from 'firebase/auth';
+import { Platform } from 'react-native';
+import { User } from '../../types/user.types';
 import { auth } from './config';
 import { createUserProfile } from './profileService';
-import { User } from '../../types/user.types';
 import { timeAsync } from './timing';
-import { Platform } from 'react-native';
 
 async function quickNetworkCheck(timeout = 3000) {
   // On web, many third-party hosts (e.g. google.com) block CORS for browser fetch probes.

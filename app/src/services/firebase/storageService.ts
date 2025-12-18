@@ -1,5 +1,5 @@
+import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { storage } from './config';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { timeAsync } from './timing';
 
 /**

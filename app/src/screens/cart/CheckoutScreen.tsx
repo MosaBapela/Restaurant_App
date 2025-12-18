@@ -17,10 +17,10 @@ import { PaymentMethodSelector } from '../../components/checkout/PaymentMethodSe
 import { Button } from '../../components/common/Button';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { clearCart } from '../../redux/slices/cartSlice';
-import { placeOrderStart, placeOrderSuccess, placeOrderFailure } from '../../redux/slices/orderSlice';
+import { placeOrderFailure, placeOrderStart, placeOrderSuccess } from '../../redux/slices/orderSlice';
+import { setSelectedAddress, setSelectedCard } from '../../redux/slices/profileSlice';
 import { createOrder } from '../../services/firebase/orderService';
 import paymentService from '../../services/payment/paymentService';
-import { setSelectedAddress, setSelectedCard } from '../../redux/slices/profileSlice';
 import { colors, spacing, typography } from '../../theme';
 import { Order, OrderItem } from '../../types/order.types';
 import { Address, PaymentCard } from '../../types/user.types';

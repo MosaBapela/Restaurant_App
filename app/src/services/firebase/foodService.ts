@@ -1,17 +1,17 @@
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  orderBy,
-  query,
-  updateDoc,
-  where,
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    orderBy,
+    query,
+    updateDoc,
+    where,
 } from 'firebase/firestore';
 import { FoodCategory, FoodItem } from '../../types/food.types';
-import { db, auth } from './config';
+import { auth, db } from './config';
 
 const FOOD_COLLECTION = 'foods';
 

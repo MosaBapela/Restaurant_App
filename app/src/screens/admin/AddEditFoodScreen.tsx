@@ -17,11 +17,11 @@ import { Header } from '../../components/common/Header';
 import { Input } from '../../components/common/Input';
 import { useAppDispatch } from '../../redux/hooks';
 import { addFoodItem as reduxAddFoodItem, updateFoodItem as reduxUpdateFoodItem } from '../../redux/slices/foodSlice';
-import localStorageService from '../../services/localStorageService';
 import {
-  addFoodItem as serviceAddFoodItem,
-  updateFoodItem as serviceUpdateFoodItem,
+    addFoodItem as serviceAddFoodItem,
+    updateFoodItem as serviceUpdateFoodItem,
 } from '../../services/firebase/foodService';
+import localStorageService from '../../services/localStorageService';
 import { colors, spacing, typography } from '../../theme';
 import { FoodCategory, FoodItem } from '../../types/food.types';
 import { FOOD_CATEGORIES } from '../../utils/constants';

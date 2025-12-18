@@ -1,5 +1,5 @@
-import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 
 const IMAGES_DIR = `${(FileSystem as any).documentDirectory}images/`;
 const META_PREFIX = 'local_image:';

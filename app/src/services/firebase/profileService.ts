@@ -1,13 +1,13 @@
-import { db } from './config';
 import {
   doc,
   getDoc,
-  setDoc,
-  updateDoc,
   serverTimestamp,
+  setDoc,
   Timestamp,
+  updateDoc,
 } from 'firebase/firestore';
-import { User, Address, PaymentCard } from '../../types/user.types';
+import { Address, PaymentCard, User } from '../../types/user.types';
+import { db } from './config';
 
 type ProfileData = Partial<{
   email: string | null;

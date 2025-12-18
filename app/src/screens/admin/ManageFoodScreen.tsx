@@ -12,15 +12,15 @@ import {
     View,
 } from 'react-native';
 import { EmptyState } from '../../components/common/EmptyState';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { Header } from '../../components/common/Header';
+import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
-import { setFoodItems, deleteFoodItem as reduxDeleteFoodItem } from '../../redux/slices/foodSlice';
-import {
-  fetchFoodItems as serviceFetchFoodItems,
-  deleteFoodItem as serviceDeleteFoodItem,
-} from '../../services/firebase/foodService';
+import { deleteFoodItem as reduxDeleteFoodItem, setFoodItems } from '../../redux/slices/foodSlice';
 import { auth } from '../../services/firebase/config';
+import {
+    deleteFoodItem as serviceDeleteFoodItem,
+    fetchFoodItems as serviceFetchFoodItems,
+} from '../../services/firebase/foodService';
 import { colors, spacing, typography } from '../../theme';
 import { FoodItem } from '../../types/food.types';
 import { CURRENCY_SYMBOL } from '../../utils/constants';

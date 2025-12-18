@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View, Button } from 'react-native';
+import { Button, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { auth } from '../../services/firebase/config';
 import { getUserProfile } from '../../services/firebase/profileService';
 import { colors, spacing, typography } from '../../theme';

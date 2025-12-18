@@ -1,24 +1,23 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import {
-  FlatList,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  Alert,
+    Alert,
+    FlatList,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { OrderCard } from '../../components/admin/OrderCard';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Header } from '../../components/common/Header';
-import { useAppDispatch, useAppSelector } from '../../redux/hooks';
-import { updateOrderStatus } from '../../redux/slices/orderSlice';
-import { setOrders } from '../../redux/slices/orderSlice';
-import type { RootState } from '../../redux/store';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { fetchAllOrders as serviceFetchAllOrders, updateOrderStatus as serviceUpdateOrderStatus } from '../../services/firebase/orderService';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
+import { setOrders, updateOrderStatus } from '../../redux/slices/orderSlice';
+import type { RootState } from '../../redux/store';
 import { auth } from '../../services/firebase/config';
+import { fetchAllOrders as serviceFetchAllOrders, updateOrderStatus as serviceUpdateOrderStatus } from '../../services/firebase/orderService';
 import { colors, spacing, typography } from '../../theme';
 import { Order, OrderStatus } from '../../types/order.types';
 

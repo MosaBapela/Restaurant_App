@@ -1,17 +1,17 @@
 import {
-  addDoc,
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  orderBy,
-  query,
-  Timestamp,
-  updateDoc,
-  where,
+    addDoc,
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    orderBy,
+    query,
+    Timestamp,
+    updateDoc,
+    where,
 } from 'firebase/firestore';
 import { Order, OrderStatus } from '../../types/order.types';
-import { db, auth } from './config';
+import { auth, db } from './config';
 
 const ORDERS_COLLECTION = 'orders';
 
