@@ -7,6 +7,8 @@ import {
     getDocs,
     orderBy,
     query,
+    serverTimestamp,
+    Timestamp,
     updateDoc,
     where,
 } from 'firebase/firestore';
@@ -23,10 +25,27 @@ export const fetchFoodItems = async (): Promise<FoodItem[]> => {
     const querySnapshot = await getDocs(
       query(collection(db!, FOOD_COLLECTION), orderBy('name'))
     );
-    return querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as FoodItem[];
+    return querySnapshot.docs.map((d) => {
+      const data = d.data() as any;
+      // normalize timestamp fields
+      const createdAt = data?.createdAt && typeof (data.createdAt as any).toMillis === 'function'
+        ? (data.createdAt as Timestamp).toMillis()
+        : typeof data.createdAt === 'number'
+        ? data.createdAt
+        : Date.now();
+      const updatedAt = data?.updatedAt && typeof (data.updatedAt as any).toMillis === 'function'
+        ? (data.updatedAt as Timestamp).toMillis()
+        : typeof data.updatedAt === 'number'
+        ? data.updatedAt
+        : createdAt;
+
+      return ({
+        id: d.id,
+        ...data,
+        createdAt,
+        updatedAt,
+      } as unknown) as FoodItem;
+    });
   } catch (error: any) {
     // include auth state in error for easier debugging on web vs native
     // eslint-disable-next-line no-console
@@ -44,10 +63,26 @@ export const fetchFoodItemsByCategory = async (
   try {
     const q = query(collection(db!, FOOD_COLLECTION), where('category', '==', category));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as FoodItem[];
+    return querySnapshot.docs.map((d) => {
+      const data = d.data() as any;
+      const createdAt = data?.createdAt && typeof (data.createdAt as any).toMillis === 'function'
+        ? (data.createdAt as Timestamp).toMillis()
+        : typeof data.createdAt === 'number'
+        ? data.createdAt
+        : Date.now();
+      const updatedAt = data?.updatedAt && typeof (data.updatedAt as any).toMillis === 'function'
+        ? (data.updatedAt as Timestamp).toMillis()
+        : typeof data.updatedAt === 'number'
+        ? data.updatedAt
+        : createdAt;
+
+      return ({
+        id: d.id,
+        ...data,
+        createdAt,
+        updatedAt,
+      } as unknown) as FoodItem;
+    });
   } catch (error: any) {
     // eslint-disable-next-line no-console
     console.error('[foodService] fetchFoodItemsByCategory failed', { error, currentUser: auth?.currentUser?.uid ?? null });
@@ -66,10 +101,23 @@ export const fetchFoodItem = async (foodId: string): Promise<FoodItem> => {
     if (!docSnap.exists()) {
       throw new Error('Food item not found');
     }
-    
+    const data = docSnap.data() as any;
+    const createdAt = data?.createdAt && typeof (data.createdAt as any).toMillis === 'function'
+      ? (data.createdAt as Timestamp).toMillis()
+      : typeof data.createdAt === 'number'
+      ? data.createdAt
+      : Date.now();
+    const updatedAt = data?.updatedAt && typeof (data.updatedAt as any).toMillis === 'function'
+      ? (data.updatedAt as Timestamp).toMillis()
+      : typeof data.updatedAt === 'number'
+      ? data.updatedAt
+      : createdAt;
+
     return {
       id: docSnap.id,
-      ...docSnap.data(),
+      ...data,
+      createdAt,
+      updatedAt,
     } as FoodItem;
   } catch (error: any) {
     // eslint-disable-next-line no-console
@@ -85,7 +133,13 @@ export const addFoodItem = async (
   foodItem: Omit<FoodItem, 'id'>
 ): Promise<string> => {
   try {
-    const docRef = await addDoc(collection(db!, FOOD_COLLECTION), foodItem);
+    const payload: any = {
+      ...foodItem,
+      // store createdAt as server timestamp and updatedAt as now
+      createdAt: serverTimestamp(),
+      updatedAt: Timestamp.now(),
+    };
+    const docRef = await addDoc(collection(db!, FOOD_COLLECTION), payload);
     return docRef.id;
   } catch (error: any) {
     // eslint-disable-next-line no-console
@@ -103,7 +157,8 @@ export const updateFoodItem = async (
 ): Promise<void> => {
   try {
   const docRef = doc(db!, FOOD_COLLECTION, foodId);
-    await updateDoc(docRef, updates);
+    const payload: any = { ...updates, updatedAt: Timestamp.now() };
+    await updateDoc(docRef, payload);
   } catch (error: any) {
     // eslint-disable-next-line no-console
     console.error('[foodService] updateFoodItem failed', { foodId, updates, error, currentUser: auth?.currentUser?.uid ?? null });

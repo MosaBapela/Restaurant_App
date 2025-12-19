@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import {
     Alert,
     Image,
+    Platform,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -69,38 +71,77 @@ export const AddEditFoodScreen: React.FC<Props> = ({ navigation, route }) => {
 
     try {
       if (isEditMode) {
-        // Edit flow: save image locally first (if changed) then update Firestore via service
+        // Edit flow: convert image to data URL and store in Firestore so all clients can access it.
         if (foodItem.image) {
           try {
-            const savedUri = await localStorageService.saveImage(foodItem.image, foodItem.id);
-            foodItem.image = savedUri;
+            const dataUrl = await uriToDataUrl(foodItem.image);
+            // If conversion succeeded and size is acceptable, use dataUrl; otherwise fall back to local save
+            if (dataUrl) {
+              foodItem.image = dataUrl;
+            } else {
+              const savedUri = await localStorageService.saveImage(foodItem.image, foodItem.id);
+              foodItem.image = savedUri;
+            }
           } catch (e) {
             // eslint-disable-next-line no-console
-            console.warn('[AddEditFood] failed to save image locally', e);
+            console.warn('[AddEditFood] image handling failed', e);
+            try {
+              const savedUri = await localStorageService.saveImage(foodItem.image, foodItem.id);
+              foodItem.image = savedUri;
+            } catch (e2) {
+              // ignore
+            }
           }
         }
 
         await serviceUpdateFoodItem(foodItem.id, { ...foodItem, price: Number(foodItem.price) });
         dispatch(reduxUpdateFoodItem(foodItem));
       } else {
-        // Create flow: first add doc to Firestore to get an id, then save image using that id
+        // Create flow: prefer converting/compressing the image BEFORE creating the doc
         const payload = { ...foodItem } as Omit<FoodItem, 'id'>;
-        // remove id if present accidentally
         // price should be a number
         payload.price = Number(payload.price);
+
+        // Attempt to convert/compress to a stable data URL first so the initial Firestore
+        // document contains a portable image (avoids ephemeral blob:file URIs in Firestore).
+        if (payload.image) {
+          try {
+            const dataUrl = await uriToDataUrl(payload.image);
+            if (dataUrl) {
+              payload.image = dataUrl;
+            }
+          } catch (e) {
+            // log and continue; we'll fallback after creating the doc
+            // eslint-disable-next-line no-console
+            console.warn('[AddEditFood] pre-conversion failed for new item, will fallback after create', e);
+          }
+        }
 
         const newId = await serviceAddFoodItem(payload);
 
         let finalImage = payload.image;
-        if (payload.image) {
+        // If we didn't manage to convert before create, try now and fallback to local save
+        if (payload.image && !payload.image.startsWith('data:') && !/^https?:\/\//i.test(payload.image)) {
           try {
-            const savedUri = await localStorageService.saveImage(payload.image, newId);
-            finalImage = savedUri;
-            // update the Firestore doc with the saved image URI
-            await serviceUpdateFoodItem(newId, { image: savedUri });
+            const dataUrl = await uriToDataUrl(payload.image);
+            if (dataUrl) {
+              finalImage = dataUrl;
+              await serviceUpdateFoodItem(newId, { image: dataUrl });
+            } else {
+              const savedUri = await localStorageService.saveImage(payload.image, newId);
+              finalImage = savedUri;
+              await serviceUpdateFoodItem(newId, { image: savedUri });
+            }
           } catch (e) {
             // eslint-disable-next-line no-console
-            console.warn('[AddEditFood] failed to save image locally for new item', e);
+            console.warn('[AddEditFood] image handling failed for new item', e);
+            try {
+              const savedUri = await localStorageService.saveImage(payload.image, newId);
+              finalImage = savedUri;
+              await serviceUpdateFoodItem(newId, { image: savedUri });
+            } catch (e2) {
+              // ignore
+            }
           }
         }
 
@@ -119,6 +160,102 @@ export const AddEditFoodScreen: React.FC<Props> = ({ navigation, route }) => {
       setLoading(false);
     }
   };
+
+  // Helper: convert a remote/file/object URL to a data URL (base64). Returns null when
+  // the image is too large or conversion fails. Caller can fallback to local save.
+  const MAX_BYTES = 600 * 1024; // 600 KB
+
+  async function arrayBufferToBase64(buffer: ArrayBuffer) {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return (globalThis as any).btoa(binary);
+  }
+
+  function extFromUri(uri: string) {
+    const m = uri.match(/\.([a-zA-Z0-9]+)(?:\?|$)/);
+    return m ? m[1] : 'jpg';
+  }
+
+  // Try resizing/compressing via ImageManipulator across several sizes/qualities
+  async function tryResizeAndConvert(uri: string): Promise<string | null> {
+    // Dynamically import expo-image-manipulator to avoid compile-time errors if it's not installed
+    let ImageManipulator: any = null;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      ImageManipulator = require('expo-image-manipulator');
+    } catch (e) {
+      ImageManipulator = null;
+    }
+    if (!ImageManipulator) return null;
+    const widths = [1024, 800, 600, 400, 300];
+    const qualities = [0.8, 0.7, 0.6, 0.5];
+
+    for (const w of widths) {
+      for (const q of qualities) {
+        try {
+          const result = await ImageManipulator.manipulateAsync(
+            uri,
+            [{ resize: { width: w } }],
+            { compress: q, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+          );
+          if (result && result.base64) {
+            const base64 = result.base64;
+            if ((base64.length / 1.37) <= MAX_BYTES) {
+              const mime = 'image/jpeg';
+              return `data:${mime};base64,${base64}`;
+            }
+          }
+        } catch (e) {
+          // ignore and continue trying other sizes/qualities
+        }
+      }
+    }
+    return null;
+  }
+
+  async function uriToDataUrl(uri: string): Promise<string | null> {
+    try {
+      // If already a data URL, return as-is
+      if (typeof uri === 'string' && uri.startsWith('data:')) return uri;
+      // Native file URIs: use FileSystem to read base64 directly
+      if (Platform.OS !== 'web' && uri.startsWith('file://')) {
+        try {
+          // Try resize & convert first (better for large images)
+          const resized = await tryResizeAndConvert(uri);
+          if (resized) return resized;
+
+          const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' as any });
+          const mime = `image/${extFromUri(uri)}`;
+          // approximate size check
+          if (base64.length / 1.37 > MAX_BYTES) return null;
+          return `data:${mime};base64,${base64}`;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      // Web or remote/object URLs: try ImageManipulator resize on web/remote URIs first
+      const resizedRemote = await tryResizeAndConvert(uri);
+      if (resizedRemote) return resizedRemote;
+
+      const resp = await fetch(uri);
+      if (!resp.ok) return null;
+      const contentLength = resp.headers.get('content-length');
+      if (contentLength && Number(contentLength) > MAX_BYTES) return null;
+      const buffer = await resp.arrayBuffer();
+      if (buffer.byteLength > MAX_BYTES) return null;
+      const base64 = await arrayBufferToBase64(buffer);
+      const mime = resp.headers.get('content-type') || `image/${extFromUri(uri)}`;
+      return `data:${mime};base64,${base64}`;
+    } catch (e) {
+      // conversion failed
+      return null;
+    }
+  }
 
   const updateField = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));

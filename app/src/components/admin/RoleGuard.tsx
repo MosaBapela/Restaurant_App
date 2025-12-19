@@ -13,8 +13,19 @@ const RoleGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   useEffect(() => {
     if (!isAuthenticated || !user?.isAdmin) {
       // If the user is not an admin, send them to the main screen (or Auth if unauthenticated)
-      // We use reset to avoid leaving admin routes in history
-      navigation.reset({ index: 0, routes: [{ name: isAuthenticated ? 'Main' : 'Auth' } as any] });
+      // Use the root navigator to perform the reset so the RESET action is handled.
+      try {
+        // climb to the root navigator
+        let rootNav: any = navigation as any;
+        while (rootNav.getParent && rootNav.getParent()) {
+          rootNav = rootNav.getParent();
+        }
+        rootNav.reset({ index: 0, routes: [{ name: isAuthenticated ? 'Main' : 'Auth' } as any] });
+      } catch (e) {
+        // fallback: try original navigation.reset
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (navigation as any).reset({ index: 0, routes: [{ name: isAuthenticated ? 'Main' : 'Auth' } as any] });
+      }
     }
   }, [isAuthenticated, user, navigation]);
 

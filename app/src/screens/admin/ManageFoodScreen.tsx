@@ -5,6 +5,7 @@ import {
     Alert,
     FlatList,
     Image,
+    Platform,
     SafeAreaView,
     StyleSheet,
     Text,
@@ -20,7 +21,9 @@ import { auth } from '../../services/firebase/config';
 import {
     deleteFoodItem as serviceDeleteFoodItem,
     fetchFoodItems as serviceFetchFoodItems,
+    updateFoodItem as serviceUpdateFoodItem,
 } from '../../services/firebase/foodService';
+import localStorageService from '../../services/localStorageService';
 import { colors, spacing, typography } from '../../theme';
 import { FoodItem } from '../../types/food.types';
 import { CURRENCY_SYMBOL } from '../../utils/constants';
@@ -52,19 +55,47 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
               // Log auth state for debugging web vs native
               // eslint-disable-next-line no-console
               console.debug('[ManageFood] attempting delete', { uid: auth?.currentUser?.uid ?? null, email: auth?.currentUser?.email ?? null });
-
-              // Optimistic delete: remove from UI immediately then call service.
-              const prev = items.slice();
-              dispatch(reduxDeleteFoodItem(item.id));
+              setLoading(true);
               try {
+                // Ensure deletion happens in Firestore first so it's authoritative.
                 await serviceDeleteFoodItem(item.id);
+                // Remove any local cached image (best-effort)
+                try {
+                  await localStorageService.deleteImage(item.id);
+                } catch (e) {
+                  // ignore
+                }
+                // Update local redux state after persistent delete
+                dispatch(reduxDeleteFoodItem(item.id));
                 Alert.alert('Deleted', `${item.name} has been deleted.`);
+                // Refresh list from server to keep state consistent
+                try {
+                  const list = await serviceFetchFoodItems();
+                  if (Platform.OS === 'web') {
+                    const patched = await Promise.all(
+                      list.map(async (it) => {
+                        try {
+                          const local = await localStorageService.getImageUri(it.id);
+                          if (local) return { ...it, image: local };
+                        } catch (e) {
+                          // ignore
+                        }
+                        return it;
+                      })
+                    );
+                    dispatch(setFoodItems(patched));
+                  } else {
+                    dispatch(setFoodItems(list));
+                  }
+                } catch (e) {
+                  // ignore refresh errors
+                }
               } catch (err: any) {
-                // rollback on failure
                 // eslint-disable-next-line no-console
-                console.warn('[ManageFood] optimistic delete failed, rolling back', err);
-                dispatch(setFoodItems(prev));
+                console.warn('[ManageFood] delete failed', err);
                 Alert.alert('Error', err?.message || 'Failed to delete item');
+              } finally {
+                setLoading(false);
               }
             },
         },
@@ -75,7 +106,23 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      const list = await serviceFetchFoodItems();
+      let list = await serviceFetchFoodItems();
+      // On web, Firestore may contain ephemeral blob/object URLs from earlier previews.
+      // Try to resolve a stable local URI stored by localStorageService for each item.
+      if (Platform.OS === 'web') {
+        const patched = await Promise.all(
+          list.map(async (it) => {
+            try {
+              const local = await localStorageService.getImageUri(it.id);
+              if (local) return { ...it, image: local };
+            } catch (e) {
+              // ignore
+            }
+            return it;
+          })
+        );
+        list = patched;
+      }
       dispatch(setFoodItems(list));
     } catch (err: any) {
       // eslint-disable-next-line no-console
@@ -85,12 +132,105 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  // Migrate ephemeral blob/object URLs or local-file URIs to stable data URLs stored in Firestore.
+  // This helps web clients load images that were previously saved as blob: URLs.
+  const migrateImages = async () => {
+    setLoading(true);
+    let success = 0;
+    let skipped = 0;
+    let failed = 0;
+    try {
+      const list = await serviceFetchFoodItems();
+      for (const it of list) {
+        const img = it.image;
+        if (!img) {
+          skipped++;
+          continue;
+        }
+        // Already stable (http(s) or data URL) skip
+        if (/^data:|^https?:\/\//i.test(img)) {
+          skipped++;
+          continue;
+        }
+
+        try {
+          // First try to see if we already saved a stable local copy via localStorageService
+          const local = await localStorageService.getImageUri(it.id);
+          if (local && /^data:/i.test(local)) {
+            await serviceUpdateFoodItem(it.id, { image: local });
+            success++;
+            continue;
+          }
+
+          // If on native and local is a file path, read as base64 and convert to data URL
+          if (local && typeof local === 'string' && !/^data:/i.test(local) && local.length > 0) {
+            try {
+              // Attempt to read file as base64
+              // eslint-disable-next-line @typescript-eslint/no-var-requires
+              const FileSystem = require('expo-file-system');
+              const base64 = await FileSystem.readAsStringAsync(local, { encoding: 'base64' as any });
+              const ext = local.match(/\.([a-zA-Z0-9]+)(?:\?|$)/);
+              const mime = `image/${(ext && ext[1]) || 'jpg'}`;
+              const dataUrl = `data:${mime};base64,${base64}`;
+              await serviceUpdateFoodItem(it.id, { image: dataUrl });
+              success++;
+              continue;
+            } catch (e) {
+              // fall through to try fetching original uri
+            }
+          }
+
+          // Last resort: try to fetch the original URI and convert to data URL via localStorageService.saveImage
+          try {
+            const saved = await localStorageService.saveImage(img, it.id);
+            if (saved) {
+              await serviceUpdateFoodItem(it.id, { image: saved });
+              success++;
+              continue;
+            }
+          } catch (e) {
+            // ignore and count as failure below
+          }
+
+          failed++;
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('[ManageFood] migrateImages item failed', it.id, e);
+          failed++;
+        }
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[ManageFood] migrateImages failed', e);
+      Alert.alert('Migration failed', String(e));
+    } finally {
+      setLoading(false);
+      Alert.alert('Migration complete', `success: ${success}, skipped: ${skipped}, failed: ${failed}`);
+      // refresh list
+      onRefresh();
+    }
+  };
+
   React.useEffect(() => {
     let mounted = true;
     const load = async () => {
       try {
         setLoading(true);
-        const list = await serviceFetchFoodItems();
+        let list = await serviceFetchFoodItems();
+        if (Platform.OS === 'web') {
+          const patched = await Promise.all(
+            list.map(async (it) => {
+              try {
+                const local = await localStorageService.getImageUri(it.id);
+                if (local) return { ...it, image: local };
+              } catch (e) {
+                // ignore
+              }
+              return it;
+            })
+          );
+          list = patched;
+        }
         if (mounted) dispatch(setFoodItems(list));
       } catch (err: any) {
         // eslint-disable-next-line no-console
@@ -162,6 +302,28 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
         rightIcon="add-outline"
         onRightPress={() => navigation.navigate('AddEditFood')}
       />
+
+      {/* Admin helper: migrate blob/file image URIs to stable data URLs in Firestore */}
+      <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.sm }}>
+        <TouchableOpacity
+          style={{
+            backgroundColor: colors.background,
+            borderWidth: 1,
+            borderColor: colors.primary,
+            padding: spacing.sm,
+            borderRadius: 8,
+            alignItems: 'center',
+          }}
+          onPress={() => {
+            Alert.alert('Migrate images', 'This will attempt to migrate blob/file images to data URLs. Continue?', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'OK', onPress: migrateImages },
+            ]);
+          }}
+        >
+          <Text style={{ color: colors.primary }}>Migrate images (blob/file to data URLs)</Text>
+        </TouchableOpacity>
+      </View>
 
       {loading && <LoadingSpinner />}
 

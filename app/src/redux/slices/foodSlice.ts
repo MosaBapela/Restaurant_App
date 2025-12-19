@@ -1,5 +1,6 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { mockFoodItems } from '../../data/mockData';
+import * as foodService from '../../services/firebase/foodService';
 import { FoodCategory, FoodItem } from '../../types/food.types';
 
 interface FoodState {
@@ -12,15 +13,41 @@ interface FoodState {
 }
 
 const initialState: FoodState = {
-  // Preload with mock data so admin screens and other parts of the app
-  // can access food items even if HomeScreen hasn't mounted yet.
-  items: mockFoodItems,
-  filteredItems: mockFoodItems,
+  // Start empty and bootstrap from Firestore on app startup. If the
+  // Firestore `foods` collection is empty we seed it from the bundled
+  // `mockFoodItems` so first-time dev environments have data.
+  items: [],
+  filteredItems: [],
   selectedCategory: 'All',
   searchQuery: '',
   isLoading: false,
   error: null,
 };
+
+// Thunk: initialize foods from Firestore; seed from mock data if empty
+export const initializeFoods = createAsyncThunk(
+  'food/initialize',
+  async (_, { rejectWithValue }) => {
+    try {
+      const remote = await foodService.fetchFoodItems();
+      if (remote && remote.length > 0) {
+        return remote;
+      }
+
+      // If empty, seed mock data into Firestore and re-fetch
+      // Strip `id` from mock items because addFoodItem will generate doc ids
+      const seedPromises = mockFoodItems.map((m) => {
+        const { id: _omit, ...payload } = m as any;
+        return foodService.addFoodItem(payload as any);
+      });
+      await Promise.all(seedPromises);
+      const reFetched = await foodService.fetchFoodItems();
+      return reFetched;
+    } catch (err: any) {
+      return rejectWithValue(err?.message || 'Failed to initialize foods');
+    }
+  }
+);
 
 const foodSlice = createSlice({
   name: 'food',
@@ -75,6 +102,23 @@ const foodSlice = createSlice({
       state.items = state.items.filter((item) => item.id !== action.payload);
       state.filteredItems = state.items;
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(initializeFoods.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(initializeFoods.fulfilled, (state, action: PayloadAction<FoodItem[]>) => {
+        state.isLoading = false;
+        state.items = action.payload;
+        state.filteredItems = action.payload;
+        state.error = null;
+      })
+      .addCase(initializeFoods.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = (action.payload as string) || action.error?.message || 'Failed to initialize foods';
+      });
   },
 });
 

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
 
 const IMAGES_DIR = `${(FileSystem as any).documentDirectory}images/`;
 const META_PREFIX = 'local_image:';
@@ -36,6 +37,19 @@ export async function saveImage(fileUri: string, key: string): Promise<string> {
   await ensureDir();
   const ext = extFromUri(fileUri);
   const dest = `${IMAGES_DIR}${key}_${Date.now()}.${ext}`;
+  // Web: persist as data URL (base64) in AsyncStorage because blob/object URLs
+  // are not persistent across reloads and Expo FileSystem on web doesn't
+  // provide a stable file:// path accessible after reload.
+  if (Platform.OS === 'web') {
+    // fetch the resource (handles blob: object URLs and http(s) URLs)
+    const resp = await fetch(fileUri);
+    const buffer = await resp.arrayBuffer();
+    const base64 = await arrayBufferToBase64(buffer);
+    const mime = `image/${ext}`;
+    const dataUrl = `data:${mime};base64,${base64}`;
+    await AsyncStorage.setItem(META_PREFIX + key, dataUrl);
+    return dataUrl;
+  }
 
   if (fileUri.startsWith('http://') || fileUri.startsWith('https://')) {
     await FileSystem.downloadAsync(fileUri, dest);
@@ -46,7 +60,7 @@ export async function saveImage(fileUri: string, key: string): Promise<string> {
     const resp = await fetch(fileUri);
     const buffer = await resp.arrayBuffer();
     const base64 = await arrayBufferToBase64(buffer);
-  await FileSystem.writeAsStringAsync(dest, base64, { encoding: 'base64' });
+    await FileSystem.writeAsStringAsync(dest, base64, { encoding: 'base64' });
   }
 
   await AsyncStorage.setItem(META_PREFIX + key, dest);

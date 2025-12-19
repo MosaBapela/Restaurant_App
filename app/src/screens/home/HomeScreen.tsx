@@ -1,21 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  Image,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Image,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { FoodCategoryTabs } from '../../components/food/FoodCategoryTabs';
 import { FoodGrid } from '../../components/food/FoodGrid';
-import { mockFoodItems } from '../../data/mockData';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { toggleFavorite } from '../../redux/slices/favoritesSlice';
-import { setCategory, setFoodItems, setSearchQuery } from '../../redux/slices/foodSlice';
+import { setCategory, setSearchQuery } from '../../redux/slices/foodSlice';
 import { colors, spacing, typography } from '../../theme';
 import { FoodCategory } from '../../types/food.types';
 
@@ -29,10 +28,8 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const favorites = useAppSelector((state) => state.favorites);
   const [searchText, setSearchText] = useState('');
 
-  useEffect(() => {
-    // Load food items on mount
-    dispatch(setFoodItems(mockFoodItems));
-  }, []);
+  // Food items are initialized on app startup from Firestore by the
+  // `initializeFoods` thunk. No local seeding is required here.
 
   const handleSearch = (text: string) => {
     setSearchText(text);

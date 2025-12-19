@@ -69,7 +69,21 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       setLoading(false);
       const isAdminEmail = email.toLowerCase() === 'admin@restaurant.com';
       Alert.alert('Success', 'Logged in successfully', [
-        { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: isAdminEmail ? 'Admin' : 'Main' }] }) },
+        {
+          text: 'OK',
+          onPress: () => {
+            try {
+              let rootNav: any = navigation as any;
+              while (rootNav.getParent && rootNav.getParent()) {
+                rootNav = rootNav.getParent();
+              }
+              rootNav.reset({ index: 0, routes: [{ name: isAdminEmail ? 'Admin' : 'Main' }] });
+            } catch (e) {
+              // fallback
+              (navigation as any).reset({ index: 0, routes: [{ name: isAdminEmail ? 'Admin' : 'Main' }] });
+            }
+          },
+        },
       ]);
 
       // Background reconciliation: fetch real profile and update the Redux store when available.
@@ -80,7 +94,15 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             dispatch(updateUser(profile));
             // If this account is an admin, navigate to Admin stack (reconcile navigation)
             if (profile.isAdmin) {
-              navigation.reset({ index: 0, routes: [{ name: 'Admin' }] });
+              try {
+                let rootNav: any = navigation as any;
+                while (rootNav.getParent && rootNav.getParent()) {
+                  rootNav = rootNav.getParent();
+                }
+                rootNav.reset({ index: 0, routes: [{ name: 'Admin' }] });
+              } catch (e) {
+                (navigation as any).reset({ index: 0, routes: [{ name: 'Admin' }] });
+              }
             }
           }
         } catch (err) {

@@ -55,7 +55,18 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
 
           setLoggingOut(false);
           Alert.alert('Success', 'You have been logged out', [
-            { text: 'OK', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Auth', params: { screen: 'Closing' } }] }) },
+            { text: 'OK', onPress: () => {
+                try {
+                  let rootNav: any = navigation as any;
+                  while (rootNav.getParent && rootNav.getParent()) {
+                    rootNav = rootNav.getParent();
+                  }
+                  rootNav.reset({ index: 0, routes: [{ name: 'Auth', params: { screen: 'Closing' } }] });
+                } catch (e) {
+                  (navigation as any).reset({ index: 0, routes: [{ name: 'Auth', params: { screen: 'Closing' } }] });
+                }
+              }
+            },
           ]);
         },
       },
