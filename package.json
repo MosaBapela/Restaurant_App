@@ -3,7 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "set \"EXPO_ROUTER_APP_ROOT=app/src/screens\" && expo start",
+  "start": "node ./scripts/start-with-stub.js",
     "start:stub": "node ./serverless/payment_stub/index.js",
     "start:dev": "concurrently \"npm run start\" \"npm run start:stub\"",
     "reset-project": "node ./scripts/reset-project.js",
