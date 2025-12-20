@@ -1,0 +1,291 @@
+import { FoodItem } from '../types/food.types';
+import { Address, PaymentCard, User } from '../types/user.types';
+
+export const mockFoodItems: FoodItem[] = [
+  {
+    id: '1',
+    name: 'Buff Burger',
+    description: 'Big juicy buff burger with cheese, lettuce, tomato, onions and special sauce!',
+    price: 350,
+    image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500',
+    category: 'Burgers',
+    rating: 4.5,
+    sideOptions: [
+      { id: 's1', name: 'Chips', included: true },
+      { id: 's3', name: 'Garden Salad', included: true },
+      { id: 's4', name: 'Coleslaw', included: true },
+    ],
+    drinkOptions: [
+      { id: 'd1', name: 'Coca-Cola', price: 25 },
+      { id: 'd2', name: 'Sprite', price: 25 },
+      { id: 'd3', name: 'Fanta Orange', price: 25 },
+      { id: 'd4', name: 'Iced Tea', price: 30 },
+    ],
+    extras: [
+      { id: 'e1', name: 'Extra Patty', price: 50 },
+      { id: 'e2', name: 'Bacon', price: 35 },
+      { id: 'e3', name: 'Cheese', price: 20 },
+      { id: 'e4', name: 'Extra Sauce', price: 10 },
+    ],
+    removableIngredients: ['Lettuce', 'Tomato', 'Onions', 'Pickles'],
+    isAvailable: true,
+  },
+  {
+    id: '2',
+    name: 'Hamburger',
+    description: 'Classic beef burger with lettuce, tomato, and our signature sauce',
+    price: 250,
+    image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=500',
+    category: 'Burgers',
+    rating: 4.3,
+    sideOptions: [
+      { id: 's1', name: 'Chips', included: true },
+      { id: 's2', name: 'Onion Rings', included: true },
+      { id: 's3', name: 'Salad', included: true },
+    ],
+    drinkOptions: [
+      { id: 'd1', name: 'Coca-Cola', price: 25 },
+      { id: 'd2', name: 'Sprite', price: 25 },
+    ],
+    extras: [
+      { id: 'e1', name: 'Extra Patty', price: 40 },
+      { id: 'e2', name: 'Cheese', price: 20 },
+    ],
+    removableIngredients: ['Lettuce', 'Tomato', 'Onions'],
+    isAvailable: true,
+  },
+  {
+    id: '3',
+    name: 'Pepperoni Pizza',
+    description: 'Classic pepperoni pizza with mozzarella cheese and our signature tomato sauce',
+    price: 350,
+    image: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?w=500',
+    category: 'Pizza',
+    rating: 4.7,
+    drinkOptions: [
+      { id: 'd1', name: 'Coca-Cola', price: 25 },
+      { id: 'd2', name: 'Sprite', price: 25 },
+    ],
+    extras: [
+      { id: 'e1', name: 'Extra Cheese', price: 30 },
+      { id: 'e2', name: 'Extra Pepperoni', price: 40 },
+      { id: 'e3', name: 'Mushrooms', price: 25 },
+      { id: 'e4', name: 'Olives', price: 20 },
+    ],
+    removableIngredients: ['Pepperoni', 'Olives'],
+    isAvailable: true,
+  },
+  {
+    id: '4',
+    name: 'Mediterranean Marvel',
+    description: 'Indulge in the fresh, vibrant flavors of the Mediterranean. Our Mediterranean Marvel Pizza is topped with a blend of creamy feta, tangy sun-dried tomatoes, roasted red peppers...',
+    price: 420,
+    image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=500',
+    category: 'Pizza',
+    rating: 4.8,
+    drinkOptions: [
+      { id: 'd1', name: 'Coca-Cola', price: 25 },
+      { id: 'd2', name: 'Sparkling Water', price: 30 },
+    ],
+    extras: [
+      { id: 'e1', name: 'Extra Feta', price: 35 },
+      { id: 'e2', name: 'Olives', price: 20 },
+    ],
+    isAvailable: true,
+  },
+  {
+    id: '5',
+    name: 'Cheese Sandwich',
+    description: 'Grilled cheese sandwich with tomato and our special herbs',
+    price: 200,
+    image: 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=500',
+    category: 'Starters',
+    rating: 4.2,
+    sideOptions: [
+      { id: 's1', name: 'Chips', included: true },
+      { id: 's2', name: 'Salad', included: true },
+    ],
+    drinkOptions: [
+      { id: 'd1', name: 'Juice', price: 20 },
+    ],
+    isAvailable: true,
+  },
+  {
+    id: '6',
+    name: 'Grilled Chicken',
+    description: 'Tender grilled chicken breast with vegetables and your choice of side',
+    price: 380,
+    image: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=500',
+    category: 'Mains',
+    rating: 4.6,
+    sideOptions: [
+      { id: 's1', name: 'Rice', included: true },
+      { id: 's3', name: 'Mashed Potato', included: true },
+      { id: 's4', name: 'Grilled Vegetables', included: true },
+    ],
+    drinkOptions: [
+      { id: 'd1', name: 'Coca-Cola', price: 25 },
+      { id: 'd2', name: 'Iced Tea', price: 30 },
+    ],
+    extras: [
+      { id: 'e1', name: 'Extra Chicken', price: 60 },
+      { id: 'e2', name: 'Mushroom Sauce', price: 25 },
+    ],
+    isAvailable: true,
+  },
+  {
+    id: '7',
+    name: 'Chocolate Lava Cake',
+    description: 'Warm chocolate cake with a molten center, served with vanilla ice cream',
+    price: 120,
+    image: 'https://images.unsplash.com/photo-1624353365286-3f8d62daad51?w=500',
+    category: 'Dessert',
+    rating: 4.9,
+    isAvailable: true,
+  },
+  {
+    id: '8',
+    name: 'Cheesecake',
+    description: 'Classic New York cheesecake with strawberry topping',
+    price: 95,
+    image: 'https://images.unsplash.com/photo-1533134242930-74a69e2d1e36?w=500',
+    category: 'Dessert',
+    rating: 4.7,
+    isAvailable: true,
+  },
+  {
+    id: '9',
+    name: 'Fresh Orange Juice',
+    description: 'Freshly squeezed orange juice',
+    price: 45,
+    image: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=500',
+    category: 'Beverages',
+    rating: 4.5,
+    isAvailable: true,
+  },
+  {
+    id: '10',
+    name: 'Cappuccino',
+    description: 'Italian-style cappuccino with steamed milk foam',
+    price: 50,
+    image: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=500',
+    category: 'Beverages',
+    rating: 4.4,
+    isAvailable: true,
+  },
+  {
+    id: '11',
+    name: 'Red Wine',
+    description: 'Premium South African red wine - 750ml',
+    price: 280,
+    image: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=500',
+    category: 'Alcohols',
+    rating: 4.6,
+    isAvailable: true,
+  },
+  {
+    id: '12',
+    name: 'Draft Beer',
+    description: 'Cold draft beer - 500ml',
+    price: 55,
+    image: 'https://images.unsplash.com/photo-1535958636474-b021ee887b13?w=500',
+    category: 'Alcohols',
+    rating: 4.5,
+    isAvailable: true,
+  },
+];
+
+export const mockUser: User = {
+  uid: 'user123',
+  email: 'john.doe@example.com',
+  name: 'John',
+  surname: 'Doe',
+  contactNumber: '0821234567',
+  addresses: [
+    {
+      id: 'addr1',
+      street: '123 Main Street',
+      city: 'Pretoria',
+      province: 'Gauteng',
+      postalCode: '0001',
+      isDefault: true,
+    },
+    {
+      id: 'addr2',
+      street: '456 Oak Avenue',
+      city: 'Johannesburg',
+      province: 'Gauteng',
+      postalCode: '2000',
+      isDefault: false,
+    },
+  ],
+  paymentCards: [
+    {
+      id: 'card1',
+      cardNumber: '4532 **** **** 1234',
+      cardHolder: 'John Doe',
+      expiryDate: '12/25',
+      cvv: '***',
+      isDefault: true,
+    },
+    {
+      id: 'card2',
+      cardNumber: '5425 **** **** 5678',
+      cardHolder: 'John Doe',
+      expiryDate: '06/26',
+      cvv: '***',
+      isDefault: false,
+    },
+  ],
+  createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000, // 30 days ago
+  isAdmin: false,
+};
+
+export const mockAdminUser: User = {
+  ...mockUser,
+  uid: 'admin123',
+  email: 'admin@restaurant.com',
+  name: 'Admin',
+  surname: 'User',
+  isAdmin: true,
+};
+
+// Sample addresses for testing
+export const sampleAddresses: Address[] = [
+  {
+    id: 'addr1',
+    street: '123 Main Street',
+    city: 'Pretoria',
+    province: 'Gauteng',
+    postalCode: '0001',
+    isDefault: true,
+  },
+  {
+    id: 'addr2',
+    street: '456 Oak Avenue',
+    city: 'Johannesburg',
+    province: 'Gauteng',
+    postalCode: '2000',
+    isDefault: false,
+  },
+];
+
+// Sample payment cards for testing
+export const sampleCards: PaymentCard[] = [
+  {
+    id: 'card1',
+    cardNumber: '4532 **** **** 1234',
+    cardHolder: 'John Doe',
+    expiryDate: '12/25',
+    cvv: '***',
+    isDefault: true,
+  },
+  {
+    id: 'card2',
+    cardNumber: '5425 **** **** 5678',
+    cardHolder: 'John Doe',
+    expiryDate: '06/26',
+    cvv: '***',
+    isDefault: false,
+  },
+];
