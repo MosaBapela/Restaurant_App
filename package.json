@@ -10,8 +10,11 @@
     "android": "set \"EXPO_ROUTER_APP_ROOT=app/src/screens\" && expo start --android",
     "ios": "set \"EXPO_ROUTER_APP_ROOT=app/src/screens\" && expo start --ios",
     "web": "set \"EXPO_ROUTER_APP_ROOT=app/src/screens\" && expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "build:android": "eas build -p android --profile preview",
+    "build:android:classic": "expo build:android -t apk"
   },
+  
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
     "@hookform/resolvers": "^5.2.2",
