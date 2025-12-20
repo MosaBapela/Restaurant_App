@@ -96,6 +96,11 @@ Build (preview profile produces an APK):
 npm run build:android
 ```
 
+## Download APK
+
+(Donload .apk link) https://expo.dev/accounts/mossman2/projects/Restaurant_App/builds/7d0dd272-b33c-4cef-8358-61e09adb56e4
+
+
 Classic (deprecated) fallback:
 
 ```bash
