@@ -3,7 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-  "start": "node ./scripts/start-with-stub.js",
+    "start": "node ./scripts/start-with-stub.js",
     "start:stub": "node ./serverless/payment_stub/index.js",
     "start:dev": "concurrently \"npm run start\" \"npm run start:stub\"",
     "reset-project": "node ./scripts/reset-project.js",
@@ -14,7 +14,6 @@
     "build:android": "eas build -p android --profile preview",
     "build:android:classic": "expo build:android -t apk"
   },
-  
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
     "@hookform/resolvers": "^5.2.2",
@@ -42,7 +41,7 @@
     "expo-system-ui": "~6.0.9",
     "expo-web-browser": "~15.0.10",
     "express": "^5.2.1",
-    "firebase": "^12.7.0",
+    "firebase": "^12.10.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.68.0",
