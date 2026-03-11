@@ -7,6 +7,7 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TouchableOpacity,
     View,
 } from 'react-native';
 import { Button } from '../../components/common/Button';
@@ -16,78 +17,126 @@ import { Input } from '../../components/common/Input';
 import { AddressCard } from '../../components/profile/AddressCard';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { updateUser } from '../../redux/slices/authSlice';
-import { addUserAddress, deleteUserAddress } from '../../services/firebase/profileService';
+import {
+    addUserAddress,
+    deleteUserAddress,
+    setDefaultAddress,
+    updateUserAddress,
+} from '../../services/firebase/profileService';
 import { colors, spacing, typography } from '../../theme';
 import { Address } from '../../types/user.types';
 
 type Props = NativeStackScreenProps<any, 'ManageAddresses'>;
 
+const EMPTY_FORM = { street: '', city: '', province: '', postalCode: '' };
+
 export const ManageAddressesScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [formData, setFormData] = useState({
-    street: '',
-    city: '',
-    province: '',
-    postalCode: '',
-  });
 
-  const handleAddAddress = () => {
+  const [showModal, setShowModal] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+  const [formData, setFormData] = useState(EMPTY_FORM);
+
+  //  Helpers 
+
+  const openAdd = () => {
+    setEditingAddress(null);
+    setFormData(EMPTY_FORM);
+    setShowModal(true);
+  };
+
+  const openEdit = (address: Address) => {
+    setEditingAddress(address);
+    setFormData({
+      street: address.street,
+      city: address.city,
+      province: address.province,
+      postalCode: address.postalCode,
+    });
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingAddress(null);
+    setFormData(EMPTY_FORM);
+  };
+
+  //  Save (add or edit) 
+
+  const handleSave = () => {
     if (!formData.street || !formData.city || !formData.province || !formData.postalCode) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
-
     if (!user) return;
-    const newAddress: Address = {
-      id: `addr_${Date.now()}`,
-      ...formData,
-      isDefault: user?.addresses.length === 0,
-    };
 
-    setShowAddModal(false);
-    setFormData({ street: '', city: '', province: '', postalCode: '' });
+    if (editingAddress) {
+      closeModal();
+      (async () => {
+        try {
+          const updated = await updateUserAddress(user.uid, editingAddress.id, { ...formData });
+          dispatch(updateUser(updated));
+          Alert.alert('Success', 'Address updated successfully');
+        } catch (err: any) {
+          Alert.alert('Update failed', err?.message ?? String(err));
+        }
+      })();
+    } else {
+      const newAddress: Address = {
+        id: `addr_${Date.now()}`,
+        ...formData,
+        isDefault: user.addresses.length === 0,
+      };
+      closeModal();
+      (async () => {
+        try {
+          const updated = await addUserAddress(user.uid, newAddress);
+          dispatch(updateUser(updated));
+          Alert.alert('Success', 'Address added successfully');
+        } catch (err: any) {
+          Alert.alert('Add address failed', err?.message ?? String(err));
+        }
+      })();
+    }
+  };
 
-    // Persist to Firestore and update redux with returned user
+  //  Set default 
+
+  const handleSetDefault = (addressId: string) => {
+    if (!user) return;
     (async () => {
       try {
-        const updatedUser = await addUserAddress(user.uid, newAddress);
-        dispatch(updateUser(updatedUser));
-        Alert.alert('Success', 'Address added successfully');
+        const updated = await setDefaultAddress(user.uid, addressId);
+        dispatch(updateUser(updated));
       } catch (err: any) {
-        // eslint-disable-next-line no-console
-        console.error('[ManageAddresses] add failed', err);
-        Alert.alert('Add address failed', err?.message ?? String(err));
+        Alert.alert('Error', err?.message ?? String(err));
       }
     })();
   };
 
-  const handleDeleteAddress = (addressId: string) => {
-    Alert.alert(
-      'Delete Address',
-      'Are you sure you want to delete this address?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            if (!user) return;
-            (async () => {
-              try {
-                const updatedUser = await deleteUserAddress(user.uid, addressId);
-                dispatch(updateUser(updatedUser));
-              } catch (err: any) {
-                // eslint-disable-next-line no-console
-                console.error('[ManageAddresses] delete failed', err);
-                Alert.alert('Delete failed', err?.message ?? String(err));
-              }
-            })();
-          },
+  //  Delete 
+
+  const handleDelete = (addressId: string) => {
+    Alert.alert('Delete Address', 'Are you sure you want to delete this address?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          if (!user) return;
+          (async () => {
+            try {
+              const updated = await deleteUserAddress(user.uid, addressId);
+              dispatch(updateUser(updated));
+            } catch (err: any) {
+              Alert.alert('Delete failed', err?.message ?? String(err));
+            }
+          })();
         },
-      ]
-    );
+      },
+    ]);
   };
 
   if (!user) return null;
@@ -98,7 +147,7 @@ export const ManageAddressesScreen: React.FC<Props> = ({ navigation }) => {
         title="My Addresses"
         onBackPress={() => navigation.goBack()}
         rightIcon="add-outline"
-        onRightPress={() => setShowAddModal(true)}
+        onRightPress={openAdd}
       />
 
       {user.addresses.length === 0 ? (
@@ -108,40 +157,36 @@ export const ManageAddressesScreen: React.FC<Props> = ({ navigation }) => {
           message="Add your delivery addresses to make checkout easier"
         />
       ) : (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {user.addresses.map((address) => (
-            <AddressCard
-              key={address.id}
-              address={address}
-              onDelete={() => handleDeleteAddress(address.id)}
-              showActions
-            />
+            <View key={address.id}>
+              <AddressCard
+                address={address}
+                onEdit={() => openEdit(address)}
+                onDelete={() => handleDelete(address.id)}
+                showActions
+              />
+              {!address.isDefault && (
+                <TouchableOpacity style={styles.defaultBtn} onPress={() => handleSetDefault(address.id)}>
+                  <Text style={styles.defaultBtnText}>  Set as Default</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           ))}
         </ScrollView>
       )}
 
-      {/* Add Address Modal */}
-      <Modal
-        visible={showAddModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowAddModal(false)}
-      >
+      {/* Add / Edit Modal */}
+      <Modal visible={showModal} animationType="slide" transparent onRequestClose={closeModal}>
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add New Address</Text>
-            
+            <Text style={styles.modalTitle}>{editingAddress ? 'Edit Address' : 'Add New Address'}</Text>
+
             <Input
               label="STREET ADDRESS"
               placeholder="123 Main Street"
               value={formData.street}
-              onChangeText={(value) =>
-                setFormData((prev) => ({ ...prev, street: value }))
-              }
+              onChangeText={(v) => setFormData((p) => ({ ...p, street: v }))}
               icon="location-outline"
             />
 
@@ -149,42 +194,27 @@ export const ManageAddressesScreen: React.FC<Props> = ({ navigation }) => {
               label="CITY"
               placeholder="Pretoria"
               value={formData.city}
-              onChangeText={(value) =>
-                setFormData((prev) => ({ ...prev, city: value }))
-              }
+              onChangeText={(v) => setFormData((p) => ({ ...p, city: v }))}
             />
 
             <Input
               label="PROVINCE"
               placeholder="Gauteng"
               value={formData.province}
-              onChangeText={(value) =>
-                setFormData((prev) => ({ ...prev, province: value }))
-              }
+              onChangeText={(v) => setFormData((p) => ({ ...p, province: v }))}
             />
 
             <Input
               label="POSTAL CODE"
               placeholder="0001"
               value={formData.postalCode}
-              onChangeText={(value) =>
-                setFormData((prev) => ({ ...prev, postalCode: value }))
-              }
+              onChangeText={(v) => setFormData((p) => ({ ...p, postalCode: v }))}
               keyboardType="numeric"
             />
 
             <View style={styles.modalButtons}>
-              <Button
-                title="Cancel"
-                onPress={() => setShowAddModal(false)}
-                variant="outline"
-                style={styles.modalButton}
-              />
-              <Button
-                title="Add Address"
-                onPress={handleAddAddress}
-                style={styles.modalButton}
-              />
+              <Button title="Cancel" onPress={closeModal} variant="outline" style={styles.modalButton} />
+              <Button title={editingAddress ? 'Save' : 'Add Address'} onPress={handleSave} style={styles.modalButton} />
             </View>
           </View>
         </View>
@@ -194,17 +224,23 @@ export const ManageAddressesScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
+  container: { flex: 1, backgroundColor: colors.background },
+  scrollView: { flex: 1 },
+  scrollContent: { padding: spacing.md, flexGrow: 1, paddingBottom: 140 },
+  defaultBtn: {
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
+    marginHorizontal: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 8,
+    backgroundColor: colors.accent,
+    alignSelf: 'flex-start',
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing.md,
-    flexGrow: 1,
-    paddingBottom: 140,
+  defaultBtnText: {
+    fontSize: typography.sizes.sm,
+    color: colors.white,
+    fontWeight: typography.weights.semibold,
   },
   modalContainer: {
     flex: 1,
@@ -225,12 +261,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     textAlign: 'center',
   },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginTop: spacing.lg,
-  },
-  modalButton: {
-    flex: 1,
-  },
+  modalButtons: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
+  modalButton: { flex: 1 },
 });

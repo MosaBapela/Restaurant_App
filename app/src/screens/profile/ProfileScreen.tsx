@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import React, { useState } from "react";
 import {
     Alert,
     Image,
@@ -10,16 +10,16 @@ import {
     Text,
     TouchableOpacity,
     View,
-} from 'react-native';
-import { Button } from '../../components/common/Button';
-import { ProfileField } from '../../components/profile/ProfileField';
-import { useAppDispatch, useAppSelector } from '../../redux/hooks';
-import { logout } from '../../redux/slices/authSlice';
-import { signOutUser } from '../../services/firebase/authService';
-import { auth } from '../../services/firebase/config';
-import { colors, spacing, typography } from '../../theme';
+} from "react-native";
+import { Button } from "../../components/common/Button";
+import { ProfileField } from "../../components/profile/ProfileField";
+import { useAppDispatch, useAppSelector } from "../../redux/hooks";
+import { logout } from "../../redux/slices/authSlice";
+import { signOutUser } from "../../services/firebase/authService";
+import { auth } from "../../services/firebase/config";
+import { colors, spacing, typography } from "../../theme";
 
-type Props = NativeStackScreenProps<any, 'Profile'>;
+type Props = NativeStackScreenProps<any, "Profile">;
 
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
@@ -27,18 +27,21 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [loggingOut, setLoggingOut] = useState(false);
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
       {
-        text: 'Logout',
-        style: 'destructive',
+        text: "Logout",
+        style: "destructive",
         onPress: async () => {
           setLoggingOut(true);
           // Optimistic logout: clear local state immediately for snappy UX,
           // then sign out from Firebase in background and log any errors.
           // Debug: log auth.currentUser before sign-out
           // eslint-disable-next-line no-console
-          console.log('[logout] before signOut, auth.currentUser =', auth?.currentUser);
+          console.log(
+            "[logout] before signOut, auth.currentUser =",
+            auth?.currentUser,
+          );
 
           dispatch(logout());
 
@@ -46,26 +49,20 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             try {
               await signOutUser();
               // eslint-disable-next-line no-console
-              console.log('[logout] signOut succeeded');
+              console.log("[logout] signOut succeeded");
             } catch (err: any) {
               // eslint-disable-next-line no-console
-              console.warn('[logout] signOut failed', err);
+              console.warn("[logout] signOut failed", err);
             }
           })();
 
           setLoggingOut(false);
-          Alert.alert('Success', 'You have been logged out', [
-            { text: 'OK', onPress: () => {
-                try {
-                  let rootNav: any = navigation as any;
-                  while (rootNav.getParent && rootNav.getParent()) {
-                    rootNav = rootNav.getParent();
-                  }
-                  rootNav.reset({ index: 0, routes: [{ name: 'Auth', params: { screen: 'Closing' } }] });
-                } catch (e) {
-                  (navigation as any).reset({ index: 0, routes: [{ name: 'Auth', params: { screen: 'Closing' } }] });
-                }
-              }
+          Alert.alert("Success", "You have been logged out", [
+            {
+              text: "OK",
+              onPress: () => {
+                navigation.navigate("Auth", { screen: "Closing" });
+              },
             },
           ]);
         },
@@ -87,9 +84,11 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <Image
-            source={{ uri: `https://ui-avatars.com/api/?name=${user.name}+${user.surname}&size=128` }}
+            source={{
+              uri: `https://ui-avatars.com/api/?name=${user.name}+${user.surname}&size=128`,
+            }}
             // provide a static default image as fallback for Android / offline
-            defaultSource={require('../../../../assets/images/react-logo.png')}
+            defaultSource={require("../../../../assets/images/react-logo.png")}
             style={styles.avatar}
             resizeMode="cover"
             onError={() => {
@@ -114,19 +113,19 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             icon="person-outline"
             label="Full Name"
             value={`${user.name} ${user.surname}`}
-            onPress={() => navigation.navigate('EditProfile')}
+            onPress={() => navigation.navigate("EditProfile")}
           />
           <ProfileField
             icon="mail-outline"
             label="Email"
             value={user.email}
-            onPress={() => navigation.navigate('EditProfile')}
+            onPress={() => navigation.navigate("EditProfile")}
           />
           <ProfileField
             icon="call-outline"
             label="Contact Number"
             value={user.contactNumber}
-            onPress={() => navigation.navigate('EditProfile')}
+            onPress={() => navigation.navigate("EditProfile")}
           />
         </View>
 
@@ -135,41 +134,65 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.sectionTitle}>My Details</Text>
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => navigation.navigate('ManageAddresses')}
+            onPress={() => navigation.navigate("ManageAddresses")}
           >
             <View style={styles.menuItemLeft}>
               <View style={styles.menuIconContainer}>
-                <Ionicons name="location-outline" size={24} color={colors.primary} />
+                <Ionicons
+                  name="location-outline"
+                  size={24}
+                  color={colors.primary}
+                />
               </View>
               <Text style={styles.menuItemText}>My Addresses</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.darkGray} />
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.darkGray}
+            />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => navigation.navigate('ManageCards')}
+            onPress={() => navigation.navigate("ManageCards")}
           >
             <View style={styles.menuItemLeft}>
               <View style={styles.menuIconContainer}>
-                <Ionicons name="card-outline" size={24} color={colors.primary} />
+                <Ionicons
+                  name="card-outline"
+                  size={24}
+                  color={colors.primary}
+                />
               </View>
               <Text style={styles.menuItemText}>Payment Methods</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.darkGray} />
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.darkGray}
+            />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => navigation.navigate('OrderHistory')}
+            onPress={() => navigation.navigate("OrderHistory")}
           >
             <View style={styles.menuItemLeft}>
               <View style={styles.menuIconContainer}>
-                <Ionicons name="receipt-outline" size={24} color={colors.primary} />
+                <Ionicons
+                  name="receipt-outline"
+                  size={24}
+                  color={colors.primary}
+                />
               </View>
               <Text style={styles.menuItemText}>Order History</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.darkGray} />
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.darkGray}
+            />
           </TouchableOpacity>
         </View>
 
@@ -179,15 +202,23 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.sectionTitle}>Admin</Text>
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => navigation.navigate('Admin')}
+              onPress={() => navigation.navigate("Admin")}
             >
               <View style={styles.menuItemLeft}>
                 <View style={styles.menuIconContainer}>
-                  <Ionicons name="settings-outline" size={24} color={colors.secondary} />
+                  <Ionicons
+                    name="settings-outline"
+                    size={24}
+                    color={colors.secondary}
+                  />
                 </View>
                 <Text style={styles.menuItemText}>Admin Dashboard</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.darkGray} />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.darkGray}
+              />
             </TouchableOpacity>
           </View>
         )}
@@ -198,21 +229,40 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuItemLeft}>
               <View style={styles.menuIconContainer}>
-                <Ionicons name="notifications-outline" size={24} color={colors.primary} />
+                <Ionicons
+                  name="notifications-outline"
+                  size={24}
+                  color={colors.primary}
+                />
               </View>
               <Text style={styles.menuItemText}>Notifications</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.darkGray} />
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.darkGray}
+            />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Help')}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate("Help")}
+          >
             <View style={styles.menuItemLeft}>
               <View style={styles.menuIconContainer}>
-                <Ionicons name="help-circle-outline" size={24} color={colors.primary} />
+                <Ionicons
+                  name="help-circle-outline"
+                  size={24}
+                  color={colors.primary}
+                />
               </View>
               <Text style={styles.menuItemText}>Help & Support</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.darkGray} />
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.darkGray}
+            />
           </TouchableOpacity>
         </View>
 
@@ -244,7 +294,7 @@ const styles = StyleSheet.create({
     paddingBottom: 140,
   },
   profileHeader: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: spacing.xl,
   },
   avatar: {
@@ -285,9 +335,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: colors.white,
     borderRadius: 12,
     padding: spacing.md,
@@ -299,8 +349,8 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   menuIconContainer: {
@@ -308,8 +358,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: spacing.md,
   },
   menuItemText: {

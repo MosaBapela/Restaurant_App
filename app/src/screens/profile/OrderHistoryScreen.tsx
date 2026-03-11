@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import React from "react";
 import {
     FlatList,
     SafeAreaView,
@@ -8,15 +8,20 @@ import {
     Text,
     TouchableOpacity,
     View,
-} from 'react-native';
-import { EmptyState } from '../../components/common/EmptyState';
-import { Header } from '../../components/common/Header';
-import { useAppSelector } from '../../redux/hooks';
-import { colors, spacing, typography } from '../../theme';
-import { Order } from '../../types/order.types';
-import { CURRENCY_SYMBOL } from '../../utils/constants';
+} from "react-native";
+import { EmptyState } from "../../components/common/EmptyState";
+import { Header } from "../../components/common/Header";
+import { useAppDispatch, useAppSelector } from "../../redux/hooks";
+import { setOrders } from "../../redux/slices/orderSlice";
+import {
+    fetchUserOrders,
+    subscribeToUserOrders,
+} from "../../services/firebase/orderService";
+import { colors, spacing, typography } from "../../theme";
+import { Order } from "../../types/order.types";
+import { CURRENCY_SYMBOL } from "../../utils/constants";
 
-type Props = NativeStackScreenProps<any, 'OrderHistory'>;
+type Props = NativeStackScreenProps<any, "OrderHistory">;
 
 const ORDER_STATUS_COLORS = {
   pending: colors.warning,
@@ -28,16 +33,48 @@ const ORDER_STATUS_COLORS = {
 };
 
 const ORDER_STATUS_LABELS = {
-  pending: 'Pending',
-  confirmed: 'Confirmed',
-  preparing: 'Preparing',
-  out_for_delivery: 'Out for Delivery',
-  delivered: 'Delivered',
-  cancelled: 'Cancelled',
+  pending: "Pending",
+  confirmed: "Confirmed",
+  preparing: "Preparing",
+  out_for_delivery: "Out for Delivery",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
 };
 
 export const OrderHistoryScreen: React.FC<Props> = ({ navigation }) => {
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
   const { orders } = useAppSelector((state) => state.order);
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const loadOrders = React.useCallback(async () => {
+    if (!user?.uid) return;
+    setRefreshing(true);
+    try {
+      const list = await fetchUserOrders(user.uid);
+      dispatch(setOrders(list));
+    } catch (err) {
+      // keep prior local state if fetch fails
+    } finally {
+      setRefreshing(false);
+    }
+  }, [dispatch, user?.uid]);
+
+  React.useEffect(() => {
+    if (!user?.uid) return;
+
+    const unsubscribe = subscribeToUserOrders(
+      user.uid,
+      (list) => {
+        dispatch(setOrders(list));
+      },
+      () => {
+        // keep previous orders if realtime listener errors
+      },
+    );
+
+    return unsubscribe;
+  }, [dispatch, user?.uid]);
 
   const renderOrderItem = ({ item }: { item: Order }) => (
     <TouchableOpacity
@@ -49,10 +86,10 @@ export const OrderHistoryScreen: React.FC<Props> = ({ navigation }) => {
         <View>
           <Text style={styles.orderId}>Order #{item.id.slice(-6)}</Text>
           <Text style={styles.orderDate}>
-            {new Date(item.createdAt).toLocaleDateString('en-ZA', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
+            {new Date(item.createdAt).toLocaleDateString("en-ZA", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
             })}
           </Text>
         </View>
@@ -70,9 +107,13 @@ export const OrderHistoryScreen: React.FC<Props> = ({ navigation }) => {
 
       <View style={styles.orderContent}>
         <View style={styles.infoRow}>
-          <Ionicons name="fast-food-outline" size={18} color={colors.darkGray} />
+          <Ionicons
+            name="fast-food-outline"
+            size={18}
+            color={colors.darkGray}
+          />
           <Text style={styles.infoText}>
-            {item.items.length} {item.items.length === 1 ? 'item' : 'items'}
+            {item.items.length} {item.items.length === 1 ? "item" : "items"}
           </Text>
         </View>
 
@@ -95,10 +136,7 @@ export const OrderHistoryScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header
-        title="Order History"
-        onBackPress={() => navigation.goBack()}
-      />
+      <Header title="Order History" onBackPress={() => navigation.goBack()} />
 
       {orders.length === 0 ? (
         <EmptyState
@@ -113,6 +151,8 @@ export const OrderHistoryScreen: React.FC<Props> = ({ navigation }) => {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshing={refreshing}
+          onRefresh={loadOrders}
         />
       )}
     </SafeAreaView>
@@ -139,9 +179,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   orderHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: spacing.md,
   },
   orderId: {
@@ -169,8 +209,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
   },
   infoText: {
@@ -179,9 +219,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   orderFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingTop: spacing.md,
   },
   totalLabel: {
