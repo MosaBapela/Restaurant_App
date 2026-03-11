@@ -65,6 +65,11 @@ Short progress log of bugs fixed and behavior updates.
       - Added `updatePaymentCard`, `setDefaultPaymentCard`, `setDefaultAddress` to `profileService.ts`.
     - **Result:** Users can now edit and set defaults for both cards and addresses from the profile section.
 
+11. **Delete food item navigates to Edit screen instead of deleting**
+    - **Issue:** Tapping the trash icon on a food card also triggered the parent card's `onPress` (edit navigation) due to React Native's touch event bubbling. The item appeared not to be deleted, and the "successfully added" alert from `AddEditFoodScreen` showed instead.
+    - **Fix:** Split the food card layout in `ManageFoodScreen` — the image + info area is now a separate inner `TouchableOpacity` (`foodCardInner`) for edit navigation, while the action buttons (edit/delete) live in a sibling `View` outside the tappable area. Added `foodCardInner` style.
+    - **Result:** Tapping the trash icon now exclusively triggers delete. The item is immediately removed from both Firestore and the Redux list.
+
 ## Notes
 
 - Some unrelated lint issues still exist in the project and can be cleaned up in a separate pass.
