@@ -76,6 +76,13 @@ export const ManageCardsScreen: React.FC<Props> = ({ navigation }) => {
     setFormData((prev) => ({ ...prev, expiryDate: formatted }));
   };
 
+  /** Auto-insert spaces every 4 digits: "4242424242424242" → "4242 4242 4242 4242" */
+  const handleCardNumberChange = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 16);
+    const formatted = digits.replace(/(.{4})/g, "$1 ").trim();
+    setFormData((prev) => ({ ...prev, cardNumber: formatted }));
+  };
+
   // ── Save (add or edit) ────────────────────────────────────────────────────
 
   const handleSave = () => {
@@ -110,10 +117,12 @@ export const ManageCardsScreen: React.FC<Props> = ({ navigation }) => {
         }
       })();
     } else {
-      // Add new
-      const maskedNumber = formData.cardNumber
-        .replace(/\D/g, "")
-        .replace(/(\d{4})(\d{4})(\d{4})(\d{4})/, "$1 **** **** $4");
+      // Add new — strip spaces from formatted card number before masking
+      const rawDigits = formData.cardNumber.replace(/\s/g, "");
+      const maskedNumber = rawDigits.replace(
+        /(\d{4})(\d{4})(\d{4})(\d{4})/,
+        "$1 **** **** $4",
+      );
       const newCard: PaymentCard = {
         id: `card_${Date.now()}`,
         cardNumber: maskedNumber || formData.cardNumber,
@@ -240,14 +249,12 @@ export const ManageCardsScreen: React.FC<Props> = ({ navigation }) => {
             {!editingCard && (
               <Input
                 label="CARD NUMBER"
-                placeholder="1234 5678 9012 3456"
+                placeholder="4242 4242 4242 4242"
                 value={formData.cardNumber}
-                onChangeText={(v) =>
-                  setFormData((p) => ({ ...p, cardNumber: v }))
-                }
+                onChangeText={handleCardNumberChange}
                 keyboardType="numeric"
                 icon="card-outline"
-                maxLength={16}
+                maxLength={19}
               />
             )}
 
@@ -262,27 +269,28 @@ export const ManageCardsScreen: React.FC<Props> = ({ navigation }) => {
             />
 
             <View style={styles.row}>
-              <Input
-                label="EXPIRY DATE"
-                placeholder="MM/YY"
-                value={formData.expiryDate}
-                onChangeText={handleExpiryChange}
-                keyboardType="numeric"
-                style={styles.halfInput}
-                maxLength={5}
-              />
+              <View style={styles.halfField}>
+                <Input
+                  label="EXPIRY DATE"
+                  placeholder="MM/YY"
+                  value={formData.expiryDate}
+                  onChangeText={handleExpiryChange}
+                  keyboardType="numeric"
+                  maxLength={5}
+                />
+              </View>
               {/* CVV — only for new cards */}
               {!editingCard && (
-                <Input
-                  label="CVV"
-                  placeholder="123"
-                  value={formData.cvv}
-                  onChangeText={(v) => setFormData((p) => ({ ...p, cvv: v }))}
-                  keyboardType="numeric"
-                  style={styles.halfInput}
-                  maxLength={4}
-                  isPassword
-                />
+                <View style={styles.cvvField}>
+                  <Input
+                    label="CVV"
+                    placeholder="123"
+                    value={formData.cvv}
+                    onChangeText={(v) => setFormData((p) => ({ ...p, cvv: v }))}
+                    keyboardType="numeric"
+                    maxLength={4}
+                  />
+                </View>
               )}
             </View>
 
@@ -355,6 +363,8 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: "row", gap: spacing.md },
   halfInput: { flex: 1 },
+  halfField: { flex: 1 },
+  cvvField: { flex: 1, minWidth: 110 },
   modalButtons: {
     flexDirection: "row",
     gap: spacing.md,

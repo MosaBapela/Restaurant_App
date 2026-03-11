@@ -138,8 +138,11 @@ app.post("/confirm-payment-intent", requireApiKey, async (req, res) => {
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`[stripe-server] Listening on http://localhost:${PORT}`);
+// Bind to 0.0.0.0 so the server is reachable from physical devices on the same
+// Wi-Fi network (not just localhost).
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`[stripe-server] Listening on http://0.0.0.0:${PORT}`);
+  console.log(`[stripe-server] LAN access:   http://192.168.89.212:${PORT}`);
   console.log(
     `[stripe-server] Stripe mode active (key: ${STRIPE_SECRET_KEY.slice(0, 12)}...)`,
   );

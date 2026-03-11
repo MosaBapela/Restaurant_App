@@ -70,6 +70,25 @@ Short progress log of bugs fixed and behavior updates.
     - **Fix:** Split the food card layout in `ManageFoodScreen` — the image + info area is now a separate inner `TouchableOpacity` (`foodCardInner`) for edit navigation, while the action buttons (edit/delete) live in a sibling `View` outside the tappable area. Added `foodCardInner` style.
     - **Result:** Tapping the trash icon now exclusively triggers delete. The item is immediately removed from both Firestore and the Redux list.
 
+12. **Stripe payment server not reachable from physical devices**
+    - **Issue:** Both `serverless/stripe_server/index.js` and `serverless/payment_stub/index.js` called `app.listen(PORT)` with no host, which binds to `127.0.0.1` (localhost) only — unreachable from phones on the same Wi-Fi.
+    - **Fix:** Changed both servers to `app.listen(PORT, "0.0.0.0", ...)` so they bind to all network interfaces.
+    - **Also done:** Created `serverless/stripe_server/.env` with real Stripe keys. Updated root `.env` with publishable key and switched `EXPO_PUBLIC_PAYMENT_MODE=stripe`.
+    - **Result:** Stripe server confirmed live at `http://192.168.89.212:4243/health` → `{"ok":true,"mode":"stripe"}`.
+
+13. **CVV field too narrow on Add Payment Card screen**
+    - **Issue:** CVV input with `isPassword` showed an eye-icon toggle that consumed most of the field width, leaving no room for 3 digits.
+    - **Fix:** Removed `isPassword` from CVV field (plain numeric input — no need for masking on a card-entry form). Wrapped both Expiry and CVV in explicit `halfField` (`flex: 1`) `View` containers.
+    - **Result:** CVV field is now the same width as Expiry and shows all digits clearly.
+
+14. **Stripe payment returns "Unauthorized"**
+    - **Root cause:** The Stripe server's `requireApiKey` middleware checks for an `x-api-key` header on every request. In stub mode the app correctly sent `x-api-key: dev_stub_key`, but in Stripe mode `paymentService.ts` called `postJson(url, payload)` with **no headers** — so the server rejected every request with `401 Unauthorized`.
+    - **Fix (3 changes):**
+      1. Added `EXPO_PUBLIC_PAYMENT_SERVER_KEY=stripe_server_key` to root `.env` (matches `PAYMENT_SERVER_KEY` in `serverless/stripe_server/.env`).
+      2. Added `const STRIPE_SERVER_KEY` constant to `paymentService.ts` reading that env var.
+      3. Passed `{ "x-api-key": STRIPE_SERVER_KEY }` as headers in the Stripe `postJson` call.
+    - **Result:** App now sends the correct API key; server accepts the request and creates a PaymentIntent.
+
 ## Notes
 
 - Some unrelated lint issues still exist in the project and can be cleaned up in a separate pass.

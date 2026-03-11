@@ -18,7 +18,9 @@ const STUB_URL =
   process.env.EXPO_PUBLIC_PAYMENT_STUB_URL || "http://localhost:4242/pay";
 const STUB_KEY = process.env.EXPO_PUBLIC_PAYMENT_STUB_KEY || "dev_stub_key";
 const STRIPE_SERVER_URL =
-  process.env.EXPO_PUBLIC_STRIPE_SERVER_URL || "http://localhost:4242";
+  process.env.EXPO_PUBLIC_STRIPE_SERVER_URL || "http://localhost:4243";
+const STRIPE_SERVER_KEY =
+  process.env.EXPO_PUBLIC_PAYMENT_SERVER_KEY || "stripe_server_key";
 
 function buildCandidateUrls(rawUrl: string): string[] {
   const base = String(rawUrl || "").trim();
@@ -125,13 +127,10 @@ export async function processPayment(
   }
 
   if (MODE === "stripe") {
-    // For Stripe mode the expectation is that you provide a secure server endpoint
-    // that creates and (optionally) confirms a PaymentIntent. The client should only
-    // send minimal payment metadata; card handling should be done via Stripe SDKs or
-    // tokenization in production.
     const url = `${STRIPE_SERVER_URL.replace(/\/$/, "")}/create-payment-intent`;
     const payload = { amount, currency, orderId, card: card || null };
-    const json = await postJson(url, payload);
+    const headers = { "x-api-key": STRIPE_SERVER_KEY };
+    const json = await postJson(url, payload, headers);
     // Server is expected to return an object with at least { success: boolean, paymentIntentId }
     return {
       success: !!json?.success,
