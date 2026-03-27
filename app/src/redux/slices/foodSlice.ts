@@ -1,12 +1,12 @@
-import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { mockFoodItems } from '../../data/mockData';
-import * as foodService from '../../services/firebase/foodService';
-import { FoodCategory, FoodItem } from '../../types/food.types';
+import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { mockFoodItems } from "../../data/mockData";
+import * as foodService from "../../services/firebase/foodService";
+import { FoodCategory, FoodItem } from "../../types/food.types";
 
 interface FoodState {
   items: FoodItem[];
   filteredItems: FoodItem[];
-  selectedCategory: FoodCategory | 'All';
+  selectedCategory: FoodCategory | "All";
   searchQuery: string;
   isLoading: boolean;
   error: string | null;
@@ -18,15 +18,15 @@ const initialState: FoodState = {
   // `mockFoodItems` so first-time dev environments have data.
   items: [],
   filteredItems: [],
-  selectedCategory: 'All',
-  searchQuery: '',
+  selectedCategory: "All",
+  searchQuery: "",
   isLoading: false,
   error: null,
 };
 
 // Thunk: initialize foods from Firestore; seed from mock data if empty
 export const initializeFoods = createAsyncThunk(
-  'food/initialize',
+  "food/initialize",
   async (_, { rejectWithValue }) => {
     try {
       const remote = await foodService.fetchFoodItems();
@@ -44,13 +44,13 @@ export const initializeFoods = createAsyncThunk(
       const reFetched = await foodService.fetchFoodItems();
       return reFetched;
     } catch (err: any) {
-      return rejectWithValue(err?.message || 'Failed to initialize foods');
+      return rejectWithValue(err?.message || "Failed to initialize foods");
     }
-  }
+  },
 );
 
 const foodSlice = createSlice({
-  name: 'food',
+  name: "food",
   initialState,
   reducers: {
     setFoodItems: (state, action: PayloadAction<FoodItem[]>) => {
@@ -59,55 +59,62 @@ const foodSlice = createSlice({
       // Firestore update (e.g. admin delete) doesn't reset the user's view.
       state.filteredItems = action.payload.filter((item) => {
         const categoryMatch =
-          state.selectedCategory === 'All' || item.category === state.selectedCategory;
+          state.selectedCategory === "All" ||
+          item.category === state.selectedCategory;
         const searchMatch =
-          state.searchQuery === '' ||
+          state.searchQuery === "" ||
           item.name.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
-          item.description.toLowerCase().includes(state.searchQuery.toLowerCase());
+          item.description
+            .toLowerCase()
+            .includes(state.searchQuery.toLowerCase());
         return categoryMatch && searchMatch;
       });
     },
-    
-    setCategory: (state, action: PayloadAction<FoodCategory | 'All'>) => {
+
+    setCategory: (state, action: PayloadAction<FoodCategory | "All">) => {
       state.selectedCategory = action.payload;
       state.filteredItems = state.items.filter((item) => {
         const categoryMatch =
-          action.payload === 'All' || item.category === action.payload;
+          action.payload === "All" || item.category === action.payload;
         const searchMatch =
-          state.searchQuery === '' ||
+          state.searchQuery === "" ||
           item.name.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
-          item.description.toLowerCase().includes(state.searchQuery.toLowerCase());
+          item.description
+            .toLowerCase()
+            .includes(state.searchQuery.toLowerCase());
         return categoryMatch && searchMatch;
       });
     },
-    
+
     setSearchQuery: (state, action: PayloadAction<string>) => {
       state.searchQuery = action.payload;
       state.filteredItems = state.items.filter((item) => {
         const categoryMatch =
-          state.selectedCategory === 'All' ||
+          state.selectedCategory === "All" ||
           item.category === state.selectedCategory;
         const searchMatch =
-          action.payload === '' ||
+          action.payload === "" ||
           item.name.toLowerCase().includes(action.payload.toLowerCase()) ||
           item.description.toLowerCase().includes(action.payload.toLowerCase());
         return categoryMatch && searchMatch;
       });
     },
-    
+
     addFoodItem: (state, action: PayloadAction<FoodItem>) => {
       state.items.push(action.payload);
       state.filteredItems = state.items;
     },
-    
+
     updateFoodItem: (state, action: PayloadAction<FoodItem>) => {
-      const index = state.items.findIndex((item) => item.id === action.payload.id);
+      const index = state.items.findIndex(
+        (item) => item.id === action.payload.id,
+      );
       if (index >= 0) {
         state.items[index] = action.payload;
         state.filteredItems = state.items;
       }
     },
-    
+
     deleteFoodItem: (state, action: PayloadAction<string>) => {
       state.items = state.items.filter((item) => item.id !== action.payload);
       state.filteredItems = state.items;
@@ -119,15 +126,21 @@ const foodSlice = createSlice({
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(initializeFoods.fulfilled, (state, action: PayloadAction<FoodItem[]>) => {
-        state.isLoading = false;
-        state.items = action.payload;
-        state.filteredItems = action.payload;
-        state.error = null;
-      })
+      .addCase(
+        initializeFoods.fulfilled,
+        (state, action: PayloadAction<FoodItem[]>) => {
+          state.isLoading = false;
+          state.items = action.payload;
+          state.filteredItems = action.payload;
+          state.error = null;
+        },
+      )
       .addCase(initializeFoods.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = (action.payload as string) || action.error?.message || 'Failed to initialize foods';
+        state.error =
+          (action.payload as string) ||
+          action.error?.message ||
+          "Failed to initialize foods";
       });
   },
 });

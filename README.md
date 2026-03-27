@@ -1,144 +1,219 @@
-# Restaurant_App — Expo (project-specific README)
+# Restaurant App
 
-This repository contains an Expo-managed React Native application (web + native) for a restaurant ordering demo. It includes the app UI, Redux state, Firebase services, and a lightweight local payment stub for development.
+A full-stack React Native (Expo) restaurant ordering app with Firebase, Redux, and Stripe payments.
 
-This README documents the project-specific developer workflow, scripts, environment variables, and build instructions.
+---
 
-## Quick start
+## Prerequisites
 
-1. Install dependencies
+| Tool | Version |
+|------|---------|
+| Node.js | >= 18 |
+| npm | >= 9 |
+| Expo CLI | bundled via `npx` |
+| Git | any |
 
-```powershell
+---
+
+## 1. Clone & Install
+
+```bash
+git clone https://github.com/MosaBapela/Restaurant_App.git
+cd Restaurant_App
 npm install
 ```
 
-2. Copy environment variables
+---
 
-```powershell
-copy .env.example .env
-# Edit .env and fill Firebase keys and any other values required for your environment.
-```
+## 2. Environment Setup
 
-3. Start the project (Expo + local payment stub)
-
-```powershell
-npm run start
-```
-
-Notes:
-- The repo `start` script runs `node ./scripts/start-with-stub.js` which spawns Expo and the payment stub as detached background processes and writes their PIDs to `.tmp/pids.json`.
-- If you prefer to run Expo interactively (to see logs inline) run:
-
-```powershell
-set "EXPO_ROUTER_APP_ROOT=app/src/screens" && expo start
-```
-
-Or to start the stub only:
-
-```powershell
-npm run start:stub
-```
-
-## Available scripts
-
-- `npm run start` — start Expo and the payment stub as background processes (detached).
-- `npm run start:stub` — start only the payment stub (Express server at serverless/payment_stub).
-- `npm run start:dev` — historical convenience script that uses `concurrently` to run both in the foreground.
-- `npm run android` / `npm run ios` / `npm run web` — start Expo for the specified platform.
-- `npm run lint` — run linter.
-- `npm run build:android` — cloud EAS build (recommended) using the `preview` profile (produces an APK).
-- `npm run build:android:classic` — legacy `expo build:android -t apk` fallback.
-
-## Environment variables
-
-Copy `.env.example` to `.env` and set these values as needed (do not commit secrets):
-
-- Firebase keys: EXPO_PUBLIC_FIREBASE_API_KEY, EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN, EXPO_PUBLIC_FIREBASE_PROJECT_ID, etc.
-- Payment stub settings (development): EXPO_PUBLIC_PAYMENT_MODE (stub|stripe), EXPO_PUBLIC_PAYMENT_STUB_URL, EXPO_PUBLIC_PAYMENT_STUB_KEY
-
-See `.env.example` for the full list.
-
-## Local payment stub
-
-Path: `serverless/payment_stub/index.js`
-
-Purpose: a small local Express server that simulates payments for development. Endpoints:
-
-- `GET /health` — health check
-- `POST /pay` — simulate a payment (used when EXPO_PUBLIC_PAYMENT_MODE=stub)
-- `POST /create-payment-intent` — helper endpoint for Stripe server workflows
-
-Default: listens on port 4242 and expects header `x-api-key: dev_stub_key` unless configured otherwise via env vars.
-
-Security: The stub is strictly for local development. Do not use it in production.
-
-## Firebase integration
-
-The app uses Firebase Auth and Firestore. Add your Firebase config to `.env` and confirm `app/src/services/firebase/config.ts` is reading those variables.
-
-The app includes an initializer that seeds Firestore with bundled mock data if the `foods` collection is empty.
-
-## Image persistence
-
-To work on web and native without relying on Firebase Storage, the app attempts to convert uploaded images to stable data URLs before writing them to Firestore and provides a migration helper to convert existing ephemeral URIs.
-
-## Building Android APK
-
-Recommended: EAS Build (cloud). Prereqs:
-
-- Install EAS CLI: `npm install -g eas-cli`
-- Login: `eas login`
-- (Optional) Configure project with `eas build:configure` if you haven't already
-
-Build (preview profile produces an APK):
+### App environment (root `.env`)
 
 ```bash
+# Windows
+copy .env.example .env
+
+# Mac / Linux
+cp .env.example .env
+```
+
+Open `.env` and fill in your values:
+
+```env
+# Firebase — get these from Firebase Console > Project Settings
+EXPO_PUBLIC_FIREBASE_API_KEY=your_api_key
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+EXPO_PUBLIC_FIREBASE_APP_ID=your_app_id
+
+# Payment mode: 'stub' (fake, no card needed) or 'stripe' (real Stripe)
+EXPO_PUBLIC_PAYMENT_MODE=stub
+
+# Stub server (used when MODE=stub) — use your LAN IP for physical devices
+EXPO_PUBLIC_PAYMENT_STUB_URL=http://192.168.x.x:4242/pay
+EXPO_PUBLIC_PAYMENT_STUB_KEY=dev_stub_key
+
+# Stripe server (used when MODE=stripe) — use your LAN IP for physical devices
+EXPO_PUBLIC_STRIPE_SERVER_URL=http://192.168.x.x:4243
+EXPO_PUBLIC_PAYMENT_SERVER_KEY=stripe_server_key
+EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+```
+
+> **Physical device tip:** Replace `192.168.x.x` with your machine's LAN IP.
+> Run `ipconfig` on Windows or `ifconfig` on Mac/Linux to find it.
+> Your phone must be on the same Wi-Fi network.
+
+### Stripe server environment (only needed when `PAYMENT_MODE=stripe`)
+
+```bash
+cd serverless/stripe_server
+copy .env.example .env    # Windows
+# or: cp .env.example .env
+```
+
+Edit `serverless/stripe_server/.env`:
+
+```env
+STRIPE_SECRET_KEY=sk_test_...   # From dashboard.stripe.com/apikeys
+PAYMENT_SERVER_KEY=stripe_server_key
+PORT=4243
+```
+
+> ⚠️ **Never commit this file** — it contains your Stripe secret key.
+
+---
+
+## 3. Running the App
+
+### Option A — Stub payments (simplest, no Stripe account needed)
+
+Set `EXPO_PUBLIC_PAYMENT_MODE=stub` in your root `.env`, then open **two terminals**:
+
+**Terminal 1 — Payment stub server:**
+```bash
+npm run start:stub
+```
+Verify: open `http://localhost:4242/health` — should return `{"status":"ok"}`
+
+**Terminal 2 — Expo app:**
+```bash
+npx expo start
+```
+
+---
+
+### Option B — Real Stripe payments
+
+Set `EXPO_PUBLIC_PAYMENT_MODE=stripe` in your root `.env`, then open **two terminals**:
+
+**Terminal 1 — Stripe server:**
+```bash
+cd serverless/stripe_server
+npm install       # first time only
+npm start
+```
+Verify: open `http://localhost:4243/health` — should return `{"ok":true,"mode":"stripe"}`
+
+**Terminal 2 — Expo app:**
+```bash
+npx expo start
+```
+
+---
+
+### Option C — Run everything in one command
+
+```bash
+npm run start:dev
+```
+Uses `concurrently` to start Expo + the payment stub together in one terminal.
+
+---
+
+## 4. Opening the App
+
+Once Expo is running, press one of these keys in the Expo terminal:
+
+| Key | Action |
+|-----|--------|
+| `w` | Open in web browser |
+| `a` | Open on Android emulator |
+| `i` | Open on iOS simulator (Mac only) |
+| Scan QR | Open in **Expo Go** app on your phone |
+
+---
+
+## 5. Available Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run start` | Start Expo + payment stub as background processes |
+| `npm run start:stub` | Start only the payment stub server (port 4242) |
+| `npm run start:dev` | Start Expo + stub together via `concurrently` |
+| `npm run android` | Start Expo targeting Android |
+| `npm run ios` | Start Expo targeting iOS |
+| `npm run web` | Start Expo targeting web |
+| `npm run lint` | Run ESLint |
+| `npm run build:android` | Cloud EAS build — produces an APK (preview profile) |
+
+---
+
+## 6. Project Structure
+
+```
+app/
+  _layout.tsx              # Root layout (Expo Router)
+  index.tsx                # Entry point
+  src/
+    components/            # Reusable UI components
+    data/                  # Mock seed data
+    navigation/            # Stack / tab navigators
+    redux/                 # Redux store + slices
+    screens/               # All app screens (auth, home, cart, admin...)
+    services/
+      firebase/            # Firestore + Auth services
+      payment/             # Payment service (stub or Stripe)
+    theme/                 # Colors, spacing, typography
+    types/                 # TypeScript types
+    utils/                 # Constants, helpers, validation
+assets/                    # Images and icons
+serverless/
+  payment_stub/            # Fake payment server (dev only, port 4242)
+  stripe_server/           # Real Stripe server (port 4243)
+```
+
+---
+
+## 7. Building a Release APK
+
+Requires an [Expo EAS](https://expo.dev/eas) account:
+
+```bash
+npm install -g eas-cli
+eas login
 npm run build:android
 ```
 
-Classic (deprecated) fallback:
+The EAS `preview` profile produces a downloadable `.apk` file. Follow any credential prompts for keystore setup.
+
+Classic fallback (deprecated):
 
 ```bash
 npm run build:android:classic
 ```
 
-Local native build (advanced):
+---
 
-```bash
-npx expo prebuild
-cd android
-# Windows
-.\gradlew assembleRelease
-# result: android\app\build\outputs\apk\release\app-release.apk
-```
+## 8. Troubleshooting
 
-EAS will guide you through managing credentials (keystore) if needed.
-
-## Managing background processes
-
-The `start` helper writes PIDs to `.tmp/pids.json`. To stop processes manually, use PowerShell:
-
-```powershell
-Stop-Process -Id <PID> -Force
-```
-
-If you want, I can add `npm run stop` to automate killing the background processes and/or add log redirection so you can tail logs for Expo and the stub.
-
-## Troubleshooting
-
-- If you see `ERR_CONNECTION_REFUSED` for payment requests, ensure the stub is running (`npm run start` or `npm run start:stub`).
-- If EAS build fails, ensure you're logged in (`eas login`) and that `eas.json` is configured. Check the EAS build logs for credential prompts.
-- If Expo warnings appear about package versions, run `npm install` and consider aligning package versions to your Expo SDK.
-
-## Project layout / notes
-
-- App entry: `app/src/index.tsx` and routes under `app/src/screens`
-- Redux slices: `app/src/redux/slices`
-- Firebase services: `app/src/services/firebase`
-- Admin screens include migration tools to fix image URIs
-
-If you'd like, I can add `npm run stop`, log files for detached processes, or help configure a production EAS profile that builds an AAB for Play Store uploads.
-
-
-- Building a release APK with EAS may require Android keystore configuration and setting up credentials. Follow the EAS docs if prompted.
-- For production-ready Play Store releases, you'll typically produce an AAB (`buildType: app-bundle`) and follow Play Store publication steps.
+| Problem | Fix |
+|---------|-----|
+| `ERR_CONNECTION_REFUSED` on payment | Make sure the stub or Stripe server terminal is running |
+| QR code won't connect on phone | Check your LAN IP in `.env` — phone must be on same Wi-Fi |
+| `EADDRINUSE` port 4242/4243 | Kill old process: `taskkill /F /IM node.exe` (Windows) or `npx kill-port 4242` |
+| Firebase permission denied | Check Firestore security rules in Firebase Console |
+| Expo package version warnings | Run `npm install` and align versions to your Expo SDK |
+| EAS build fails | Run `eas login`, check `eas.json`, follow credential prompts |
+| Stripe returns 401 Unauthorized | Check `EXPO_PUBLIC_PAYMENT_SERVER_KEY` matches `PAYMENT_SERVER_KEY` in stripe server `.env` |

@@ -24,8 +24,8 @@ import { auth } from "../../services/firebase/config";
 import {
     deleteFoodItem as serviceDeleteFoodItem,
     fetchFoodItems as serviceFetchFoodItems,
-    subscribeToFoodItems,
     updateFoodItem as serviceUpdateFoodItem,
+    subscribeToFoodItems,
 } from "../../services/firebase/foodService";
 import localStorageService from "../../services/localStorageService";
 import { colors, spacing, typography } from "../../theme";
@@ -57,7 +57,7 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
           style: "destructive",
           onPress: async () => {
             // Log auth state for debugging web vs native
-             
+
             console.debug("[ManageFood] attempting delete", {
               uid: auth?.currentUser?.uid ?? null,
               email: auth?.currentUser?.email ?? null,
@@ -78,7 +78,6 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
               // The subscribeToFoodItems listener will automatically update the
               // Redux store once Firestore confirms the deletion — no manual re-fetch needed.
             } catch (err: any) {
-               
               console.warn("[ManageFood] delete failed", err);
               Alert.alert("Error", err?.message || "Failed to delete item");
             } finally {
@@ -112,7 +111,6 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
       }
       dispatch(setFoodItems(list));
     } catch (err: any) {
-       
       console.warn("[ManageFood] refresh failed", err);
     } finally {
       setRefreshing(false);
@@ -158,7 +156,7 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
           ) {
             try {
               // Attempt to read file as base64
-               
+
               const FileSystem = require("expo-file-system");
               const base64 = await FileSystem.readAsStringAsync(local, {
                 encoding: "base64" as any,
@@ -188,13 +186,11 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
 
           failed++;
         } catch (e) {
-           
           console.warn("[ManageFood] migrateImages item failed", it.id, e);
           failed++;
         }
       }
     } catch (e) {
-       
       console.warn("[ManageFood] migrateImages failed", e);
       Alert.alert("Migration failed", String(e));
     } finally {
@@ -231,7 +227,6 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
         setLoading(false);
       },
       (err) => {
-         
         console.warn("[ManageFood] subscription error", err);
         setLoading(false);
       },
