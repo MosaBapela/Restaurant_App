@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import React, { useState } from "react";
 import {
     Image,
     SafeAreaView,
@@ -9,39 +9,56 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-} from 'react-native';
-import { FoodCategoryTabs } from '../../components/food/FoodCategoryTabs';
-import { FoodGrid } from '../../components/food/FoodGrid';
-import { useAppDispatch, useAppSelector } from '../../redux/hooks';
-import { toggleFavorite } from '../../redux/slices/favoritesSlice';
-import { setCategory, setSearchQuery } from '../../redux/slices/foodSlice';
-import { colors, spacing, typography } from '../../theme';
-import { FoodCategory } from '../../types/food.types';
+} from "react-native";
+import { FoodCategoryTabs } from "../../components/food/FoodCategoryTabs";
+import { FoodGrid } from "../../components/food/FoodGrid";
+import { useAppDispatch, useAppSelector } from "../../redux/hooks";
+import { toggleFavorite } from "../../redux/slices/favoritesSlice";
+import {
+    setCategory,
+    setFoodItems,
+    setSearchQuery,
+} from "../../redux/slices/foodSlice";
+import { subscribeToFoodItems } from "../../services/firebase/foodService";
+import { colors, spacing, typography } from "../../theme";
+import { FoodCategory } from "../../types/food.types";
 
-type Props = NativeStackScreenProps<any, 'Home'>;
+type Props = NativeStackScreenProps<any, "Home">;
 
 export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
-  const { filteredItems, selectedCategory } = useAppSelector((state) => state.food);
+  const { filteredItems, selectedCategory } = useAppSelector(
+    (state) => state.food,
+  );
   const { totalItems } = useAppSelector((state) => state.cart);
   const favorites = useAppSelector((state) => state.favorites);
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState("");
 
   // Food items are initialized on app startup from Firestore by the
-  // `initializeFoods` thunk. No local seeding is required here.
+  // `initializeFoods` thunk. A realtime subscription here ensures admin
+  // additions/deletions are immediately reflected without a manual refresh.
+  React.useEffect(() => {
+    const unsubscribe = subscribeToFoodItems(
+      (list) => dispatch(setFoodItems(list)),
+      (err) => {
+        console.warn("[HomeScreen] food subscription error", err);
+      },
+    );
+    return unsubscribe;
+  }, [dispatch]);
 
   const handleSearch = (text: string) => {
     setSearchText(text);
     dispatch(setSearchQuery(text));
   };
 
-  const handleCategorySelect = (category: FoodCategory | 'All') => {
+  const handleCategorySelect = (category: FoodCategory | "All") => {
     dispatch(setCategory(category));
   };
 
   const handleFoodPress = (item: any) => {
-    navigation.navigate('FoodDetail', { foodItem: item });
+    navigation.navigate("FoodDetail", { foodItem: item });
   };
 
   return (
@@ -49,25 +66,32 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => navigation.navigate('ProfileTab')}>
+          <TouchableOpacity onPress={() => navigation.navigate("ProfileTab")}>
             <Image
-              source={{ uri: 'https://ui-avatars.com/api/?name=' + user?.name || 'User' }}
+              source={{
+                uri: "https://ui-avatars.com/api/?name=" + user?.name || "User",
+              }}
               style={styles.avatar}
             />
           </TouchableOpacity>
-          
+
           <View style={styles.headerContent}>
             <Text style={styles.greeting}>
-              Choose{'\n'}Your Favorite <Text style={styles.foodText}>Food</Text>
+              Choose{"\n"}Your Favorite{" "}
+              <Text style={styles.foodText}>Food</Text>
             </Text>
           </View>
-          
+
           <View style={styles.headerRight}>
             <TouchableOpacity
               style={styles.notificationButton}
               onPress={() => {}}
             >
-              <Ionicons name="notifications-outline" size={24} color={colors.text} />
+              <Ionicons
+                name="notifications-outline"
+                size={24}
+                color={colors.text}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -84,7 +108,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
               onChangeText={handleSearch}
             />
           </View>
-          
+
           <TouchableOpacity style={styles.filterButton}>
             <Ionicons name="options-outline" size={24} color={colors.white} />
           </TouchableOpacity>
@@ -106,7 +130,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       {/* Food Grid */}
-        <FoodGrid
+      <FoodGrid
         items={filteredItems}
         onItemPress={handleFoodPress}
         onFavoritePress={(item) => dispatch(toggleFavorite(item.id))}
@@ -117,7 +141,7 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
       {totalItems > 0 && (
         <TouchableOpacity
           style={styles.cartFab}
-          onPress={() => navigation.navigate('CartTab')}
+          onPress={() => navigation.navigate("CartTab")}
         >
           <Ionicons name="cart" size={24} color={colors.white} />
           <View style={styles.cartBadge}>
@@ -140,8 +164,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: spacing.lg,
   },
   avatar: {
@@ -163,23 +187,23 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   headerRight: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.sm,
   },
   notificationButton: {
     width: 40,
     height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   searchContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.sm,
   },
   searchBar: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.white,
     borderRadius: 12,
     paddingHorizontal: spacing.md,
@@ -196,13 +220,13 @@ const styles = StyleSheet.create({
     height: 50,
     backgroundColor: colors.primary,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: spacing.md,
     marginBottom: spacing.md,
   },
@@ -217,15 +241,15 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.medium,
   },
   cartFab: {
-    position: 'absolute',
+    position: "absolute",
     bottom: spacing.lg,
     right: spacing.lg,
     width: 60,
     height: 60,
     borderRadius: 30,
     backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -233,15 +257,15 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   cartBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: -5,
     right: -5,
     backgroundColor: colors.accent,
     borderRadius: 10,
     width: 20,
     height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   cartBadgeText: {
     fontSize: typography.sizes.xs,

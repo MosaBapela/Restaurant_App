@@ -1,25 +1,27 @@
 import {
-    addDoc,
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    orderBy,
-    query,
-    Timestamp,
-    updateDoc,
-    where,
-} from 'firebase/firestore';
-import { Order, OrderStatus } from '../../types/order.types';
-import { auth, db } from './config';
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+  Timestamp,
+  Unsubscribe,
+  updateDoc,
+  where,
+} from "firebase/firestore";
+import { Order, OrderStatus } from "../../types/order.types";
+import { auth, db } from "./config";
 
-const ORDERS_COLLECTION = 'orders';
+const ORDERS_COLLECTION = "orders";
 
 /**
  * Create new order
  */
 export const createOrder = async (
-  order: Omit<Order, 'id'>
+  order: Omit<Order, "id">,
 ): Promise<string> => {
   try {
     const docRef = await addDoc(collection(db!, ORDERS_COLLECTION), {
@@ -30,8 +32,11 @@ export const createOrder = async (
     return docRef.id;
   } catch (error: any) {
     // eslint-disable-next-line no-console
-    console.error('[orderService] createOrder failed', { error, currentUser: auth?.currentUser?.uid ?? null });
-    throw new Error(error.message || 'Failed to create order');
+    console.error("[orderService] createOrder failed", {
+      error,
+      currentUser: auth?.currentUser?.uid ?? null,
+    });
+    throw new Error(error.message || "Failed to create order");
   }
 };
 
@@ -40,7 +45,11 @@ export const createOrder = async (
  */
 export const fetchUserOrders = async (userId: string): Promise<Order[]> => {
   try {
-    const q = query(collection(db!, ORDERS_COLLECTION), where('userId', '==', userId), orderBy('createdAt', 'desc'));
+    const q = query(
+      collection(db!, ORDERS_COLLECTION),
+      where("userId", "==", userId),
+      orderBy("createdAt", "desc"),
+    );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map((doc) => {
       const data = doc.data();
@@ -53,8 +62,12 @@ export const fetchUserOrders = async (userId: string): Promise<Order[]> => {
     });
   } catch (error: any) {
     // eslint-disable-next-line no-console
-    console.error('[orderService] fetchUserOrders failed', { userId, error, currentUser: auth?.currentUser?.uid ?? null });
-    throw new Error(error.message || 'Failed to fetch orders');
+    console.error("[orderService] fetchUserOrders failed", {
+      userId,
+      error,
+      currentUser: auth?.currentUser?.uid ?? null,
+    });
+    throw new Error(error.message || "Failed to fetch orders");
   }
 };
 
@@ -63,7 +76,10 @@ export const fetchUserOrders = async (userId: string): Promise<Order[]> => {
  */
 export const fetchAllOrders = async (): Promise<Order[]> => {
   try {
-    const q = query(collection(db!, ORDERS_COLLECTION), orderBy('createdAt', 'desc'));
+    const q = query(
+      collection(db!, ORDERS_COLLECTION),
+      orderBy("createdAt", "desc"),
+    );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map((doc) => {
       const data = doc.data();
@@ -76,8 +92,11 @@ export const fetchAllOrders = async (): Promise<Order[]> => {
     });
   } catch (error: any) {
     // eslint-disable-next-line no-console
-    console.error('[orderService] fetchAllOrders failed', { error, currentUser: auth?.currentUser?.uid ?? null });
-    throw new Error(error.message || 'Failed to fetch orders');
+    console.error("[orderService] fetchAllOrders failed", {
+      error,
+      currentUser: auth?.currentUser?.uid ?? null,
+    });
+    throw new Error(error.message || "Failed to fetch orders");
   }
 };
 
@@ -86,13 +105,13 @@ export const fetchAllOrders = async (): Promise<Order[]> => {
  */
 export const fetchOrder = async (orderId: string): Promise<Order> => {
   try {
-  const docRef = doc(db!, ORDERS_COLLECTION, orderId);
+    const docRef = doc(db!, ORDERS_COLLECTION, orderId);
     const docSnap = await getDoc(docRef);
-    
+
     if (!docSnap.exists()) {
-      throw new Error('Order not found');
+      throw new Error("Order not found");
     }
-    
+
     const data = docSnap.data();
     return {
       id: docSnap.id,
@@ -102,8 +121,12 @@ export const fetchOrder = async (orderId: string): Promise<Order> => {
     } as Order;
   } catch (error: any) {
     // eslint-disable-next-line no-console
-    console.error('[orderService] fetchOrder failed', { orderId, error, currentUser: auth?.currentUser?.uid ?? null });
-    throw new Error(error.message || 'Failed to fetch order');
+    console.error("[orderService] fetchOrder failed", {
+      orderId,
+      error,
+      currentUser: auth?.currentUser?.uid ?? null,
+    });
+    throw new Error(error.message || "Failed to fetch order");
   }
 };
 
@@ -112,17 +135,97 @@ export const fetchOrder = async (orderId: string): Promise<Order> => {
  */
 export const updateOrderStatus = async (
   orderId: string,
-  status: OrderStatus
+  status: OrderStatus,
 ): Promise<void> => {
   try {
-  const docRef = doc(db!, ORDERS_COLLECTION, orderId);
+    const docRef = doc(db!, ORDERS_COLLECTION, orderId);
     await updateDoc(docRef, {
       status,
       updatedAt: Timestamp.now(),
     });
   } catch (error: any) {
     // eslint-disable-next-line no-console
-    console.error('[orderService] updateOrderStatus failed', { orderId, status, error, currentUser: auth?.currentUser?.uid ?? null });
-    throw new Error(error.message || 'Failed to update order status');
+    console.error("[orderService] updateOrderStatus failed", {
+      orderId,
+      status,
+      error,
+      currentUser: auth?.currentUser?.uid ?? null,
+    });
+    throw new Error(error.message || "Failed to update order status");
   }
+};
+
+/**
+ * Subscribe to user orders in realtime.
+ */
+export const subscribeToUserOrders = (
+  userId: string,
+  onData: (orders: Order[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe => {
+  const q = query(
+    collection(db!, ORDERS_COLLECTION),
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc"),
+  );
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const orders = snapshot.docs.map((docItem) => {
+        const data = docItem.data();
+        return {
+          id: docItem.id,
+          ...data,
+          createdAt: data.createdAt.toMillis(),
+          updatedAt: data.updatedAt.toMillis(),
+        } as Order;
+      });
+      onData(orders);
+    },
+    (error: any) => {
+      if (onError)
+        onError(
+          new Error(error?.message || "Realtime order subscription failed"),
+        );
+    },
+  );
+};
+
+/**
+ * Subscribe to ALL orders in realtime (Admin).
+ * Fires whenever any order is created or updated in Firestore.
+ */
+export const subscribeToAllOrders = (
+  onData: (orders: Order[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe => {
+  const q = query(
+    collection(db!, ORDERS_COLLECTION),
+    orderBy("createdAt", "desc"),
+  );
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const orders = snapshot.docs.map((docItem) => {
+        const data = docItem.data();
+        return {
+          id: docItem.id,
+          ...data,
+          createdAt: data.createdAt.toMillis(),
+          updatedAt: data.updatedAt.toMillis(),
+        } as Order;
+      });
+      onData(orders);
+    },
+    (error: any) => {
+      if (onError)
+        onError(
+          new Error(
+            error?.message || "Realtime admin order subscription failed",
+          ),
+        );
+    },
+  );
 };

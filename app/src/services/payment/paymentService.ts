@@ -11,12 +11,54 @@
   from the client to your server unless you're PCI-compliant or using Stripe's secure tokenization.
 */
 
-type PaymentMode = 'stub' | 'stripe';
+type PaymentMode = "stub" | "stripe";
 
-const MODE = (process.env.EXPO_PUBLIC_PAYMENT_MODE as PaymentMode) || 'stub';
-const STUB_URL = process.env.EXPO_PUBLIC_PAYMENT_STUB_URL || 'http://localhost:4242/pay';
-const STUB_KEY = process.env.EXPO_PUBLIC_PAYMENT_STUB_KEY || 'dev_stub_key';
-const STRIPE_SERVER_URL = process.env.EXPO_PUBLIC_STRIPE_SERVER_URL || 'http://localhost:4242';
+const MODE = (process.env.EXPO_PUBLIC_PAYMENT_MODE as PaymentMode) || "stub";
+const STUB_URL =
+  process.env.EXPO_PUBLIC_PAYMENT_STUB_URL || "http://localhost:4242/pay";
+const STUB_KEY = process.env.EXPO_PUBLIC_PAYMENT_STUB_KEY || "dev_stub_key";
+const STRIPE_SERVER_URL =
+  process.env.EXPO_PUBLIC_STRIPE_SERVER_URL || "http://localhost:4243";
+const STRIPE_SERVER_KEY =
+  process.env.EXPO_PUBLIC_PAYMENT_SERVER_KEY || "stripe_server_key";
+
+function buildCandidateUrls(rawUrl: string): string[] {
+  const base = String(rawUrl || "").trim();
+  if (!base) return [];
+
+  const set = new Set<string>();
+  set.add(base);
+
+  // On Android emulator localhost points to emulator itself, not host machine.
+  if (/localhost|127\.0\.0\.1/i.test(base)) {
+    set.add(base.replace(/localhost|127\.0\.0\.1/gi, "10.0.2.2"));
+  }
+
+  // Expo injects host URI in many runtimes; use it to reach host machine from physical devices.
+  const hostUri =
+    process.env.EXPO_PUBLIC_HOST_URL ||
+    process.env.EXPO_PUBLIC_EXPO_HOST ||
+    process.env.EXPO_PUBLIC_MANIFEST_HOST;
+  if (hostUri) {
+    try {
+      const host = hostUri
+        .replace(/^https?:\/\//, "")
+        .split("/")[0]
+        .split(":")[0];
+      if (host) {
+        const candidate = base.replace(
+          /localhost|127\.0\.0\.1|10\.0\.2\.2/gi,
+          host,
+        );
+        set.add(candidate);
+      }
+    } catch {
+      // ignore malformed host hints
+    }
+  }
+
+  return [...set];
+}
 
 export interface PaymentCardPayload {
   id?: string;
@@ -27,61 +69,78 @@ export interface PaymentCardPayload {
 
 export interface PaymentResult {
   success: boolean;
-  provider: 'stub' | 'stripe';
+  provider: "stub" | "stripe";
   transactionId?: string;
   raw?: any;
 }
 
-async function postJson(url: string, body: any, headers: Record<string, string> = {}) {
+async function postJson(
+  url: string,
+  body: any,
+  headers: Record<string, string> = {},
+) {
   const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body),
   });
   const json = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(json?.message || `Request failed: ${res.status}`);
+  if (!res.ok)
+    throw new Error(json?.message || `Request failed: ${res.status}`);
   return json;
 }
 
 export async function processPayment(
   amount: number,
   card: PaymentCardPayload | undefined,
-  opts?: { currency?: string; orderId?: string }
+  opts?: { currency?: string; orderId?: string },
 ): Promise<PaymentResult> {
-  const currency = opts?.currency || 'ZAR';
+  const currency = opts?.currency || "ZAR";
   const orderId = opts?.orderId;
 
-  if (MODE === 'stub') {
+  if (MODE === "stub") {
     // Call the serverless stub which returns a simulated transaction id.
     const payload = { amount, currency, card: card || null, orderId };
-    const headers = { 'x-api-key': STUB_KEY };
-    const json = await postJson(STUB_URL, payload, headers);
+    const headers = { "x-api-key": STUB_KEY };
+    const candidates = buildCandidateUrls(STUB_URL);
+    let lastErr: unknown;
+    let json: any = null;
+    for (const url of candidates) {
+      try {
+        json = await postJson(url, payload, headers);
+        break;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    if (!json) {
+      throw new Error(
+        `Payment stub unreachable. Tried: ${candidates.join(", ")}. ${(lastErr as Error)?.message ?? "Network request failed"}`,
+      );
+    }
     return {
       success: true,
-      provider: 'stub',
+      provider: "stub",
       transactionId: json?.transactionId || `stub_${Date.now()}`,
       raw: json,
     };
   }
 
-  if (MODE === 'stripe') {
-    // For Stripe mode the expectation is that you provide a secure server endpoint
-    // that creates and (optionally) confirms a PaymentIntent. The client should only
-    // send minimal payment metadata; card handling should be done via Stripe SDKs or
-    // tokenization in production.
-    const url = `${STRIPE_SERVER_URL.replace(/\/$/, '')}/create-payment-intent`;
+  if (MODE === "stripe") {
+    const url = `${STRIPE_SERVER_URL.replace(/\/$/, "")}/create-payment-intent`;
     const payload = { amount, currency, orderId, card: card || null };
-    const json = await postJson(url, payload);
+    const headers = { "x-api-key": STRIPE_SERVER_KEY };
+    const json = await postJson(url, payload, headers);
     // Server is expected to return an object with at least { success: boolean, paymentIntentId }
     return {
       success: !!json?.success,
-      provider: 'stripe',
+      provider: "stripe",
       transactionId: json?.paymentIntentId || json?.id || undefined,
       raw: json,
     };
   }
 
-  throw new Error('Unsupported payment mode');
+  throw new Error("Unsupported payment mode");
 }
 
 export default {

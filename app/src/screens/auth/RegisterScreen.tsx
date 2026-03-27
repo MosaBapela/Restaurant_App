@@ -1,44 +1,46 @@
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import React, { useState } from "react";
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from 'react-native';
-import { Button } from '../../components/common/Button';
-import { Input } from '../../components/common/Input';
-import { useAppDispatch } from '../../redux/hooks';
-import { loginSuccess, updateUser } from '../../redux/slices/authSlice';
-import { registerWithEmail } from '../../services/firebase/authService';
-import { getUserProfile } from '../../services/firebase/profileService';
-import { colors, spacing, typography } from '../../theme';
-import { User } from '../../types/user.types';
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { Button } from "../../components/common/Button";
+import { Input } from "../../components/common/Input";
+import { useAppDispatch } from "../../redux/hooks";
+import { loginSuccess, updateUser } from "../../redux/slices/authSlice";
+import { registerWithEmail } from "../../services/firebase/authService";
+import { getUserProfile } from "../../services/firebase/profileService";
+import { colors, spacing, typography } from "../../theme";
+import { User } from "../../types/user.types";
 
-type Props = NativeStackScreenProps<any, 'Register'>;
+type Props = NativeStackScreenProps<any, "Register">;
 
 export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const [formData, setFormData] = useState({
-    name: '',
-    surname: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    contactNumber: '',
-    street: '',
-    city: '',
-    province: '',
-    postalCode: '',
+    name: "",
+    surname: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    contactNumber: "",
+    street: "",
+    city: "",
+    province: "",
+    postalCode: "",
   });
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
+  const [confirmPasswordError, setConfirmPasswordError] = useState<
+    string | null
+  >(null);
 
   const handleRegister = async () => {
     // basic validation with inline errors
@@ -48,36 +50,40 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     setConfirmPasswordError(null);
     let hasError = false;
     if (!emailRegex.test(formData.email)) {
-      setEmailError('Please enter a valid email address');
+      setEmailError("Please enter a valid email address");
       hasError = true;
     }
     if (!formData.password || formData.password.length < 6) {
-      setPasswordError('Password must be at least 6 characters long');
+      setPasswordError("Password must be at least 6 characters long");
       hasError = true;
     }
     if (formData.password !== formData.confirmPassword) {
-      setConfirmPasswordError('Passwords do not match');
+      setConfirmPasswordError("Passwords do not match");
       hasError = true;
     }
     if (hasError) return;
 
     setLoading(true);
     try {
-      const { credential, profile } = await registerWithEmail(formData.email, formData.password, {
-        name: formData.name,
-        surname: formData.surname,
-        contactNumber: formData.contactNumber,
-        addresses: [
-          {
-            id: 'addr1',
-            street: formData.street,
-            city: formData.city,
-            province: formData.province,
-            postalCode: formData.postalCode,
-            isDefault: true,
-          },
-        ],
-      });
+      const { credential, profile } = await registerWithEmail(
+        formData.email,
+        formData.password,
+        {
+          name: formData.name,
+          surname: formData.surname,
+          contactNumber: formData.contactNumber,
+          addresses: [
+            {
+              id: "addr1",
+              street: formData.street,
+              city: formData.city,
+              province: formData.province,
+              postalCode: formData.postalCode,
+              isDefault: true,
+            },
+          ],
+        },
+      );
 
       // Use the profile returned from registerWithEmail (created during registration) when available
       const userPayload: User = profile
@@ -90,7 +96,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             contactNumber: formData.contactNumber,
             addresses: [
               {
-                id: 'addr1',
+                id: "addr1",
                 street: formData.street,
                 city: formData.city,
                 province: formData.province,
@@ -120,36 +126,33 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
                 while (rootNav.getParent && rootNav.getParent()) {
                   rootNav = rootNav.getParent();
                 }
-                rootNav.reset({ index: 0, routes: [{ name: 'Admin' }] });
+                rootNav.reset({ index: 0, routes: [{ name: "Admin" }] });
               } catch (e) {
-                (navigation as any).reset({ index: 0, routes: [{ name: 'Admin' }] });
+                (navigation as any).reset({
+                  index: 0,
+                  routes: [{ name: "Admin" }],
+                });
               }
             }
           }
         } catch (err) {
           // eslint-disable-next-line no-console
-          console.warn('[register] background reconciliation failed', err);
+          console.warn("[register] background reconciliation failed", err);
         }
       })();
 
-      Alert.alert('Success', 'Account created successfully', [
-        { text: 'OK', onPress: () => {
-            try {
-              let rootNav: any = navigation as any;
-              while (rootNav.getParent && rootNav.getParent()) {
-                rootNav = rootNav.getParent();
-              }
-              rootNav.reset({ index: 0, routes: [{ name: 'Main' }] });
-            } catch (e) {
-              (navigation as any).reset({ index: 0, routes: [{ name: 'Main' }] });
-            }
-          }
+      Alert.alert("Success", "Account created successfully", [
+        {
+          text: "OK",
+          onPress: () => {
+            navigation.replace("Login");
+          },
         },
       ]);
     } catch (err: any) {
       setLoading(false);
       const message = err?.message ?? String(err);
-      Alert.alert('Registration failed', message);
+      Alert.alert("Registration failed", message);
     }
   };
 
@@ -159,7 +162,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
       <ScrollView
@@ -176,12 +179,12 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.form}>
           <Text style={styles.sectionTitle}>Personal Information</Text>
-          
+
           <Input
             label="USER NAME"
             placeholder="John Doe"
             value={formData.name}
-            onChangeText={(value) => updateField('name', value)}
+            onChangeText={(value) => updateField("name", value)}
             icon="person-outline"
           />
 
@@ -189,7 +192,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             label="SURNAME"
             placeholder="Doe"
             value={formData.surname}
-            onChangeText={(value) => updateField('surname', value)}
+            onChangeText={(value) => updateField("surname", value)}
             icon="person-outline"
           />
 
@@ -197,7 +200,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             label="EMAIL ADDRESS"
             placeholder="example@email.com"
             value={formData.email}
-            onChangeText={(value) => updateField('email', value)}
+            onChangeText={(value) => updateField("email", value)}
             keyboardType="email-address"
             autoCapitalize="none"
             icon="mail-outline"
@@ -208,7 +211,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             label="CONTACT NUMBER"
             placeholder="0821234567"
             value={formData.contactNumber}
-            onChangeText={(value) => updateField('contactNumber', value)}
+            onChangeText={(value) => updateField("contactNumber", value)}
             keyboardType="phone-pad"
             icon="call-outline"
           />
@@ -217,7 +220,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             label="PASSWORD"
             placeholder="••••••••••"
             value={formData.password}
-            onChangeText={(value) => updateField('password', value)}
+            onChangeText={(value) => updateField("password", value)}
             isPassword
             icon="lock-closed-outline"
             error={passwordError || undefined}
@@ -227,7 +230,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             label="CONFIRM PASSWORD"
             placeholder="••••••••••"
             value={formData.confirmPassword}
-            onChangeText={(value) => updateField('confirmPassword', value)}
+            onChangeText={(value) => updateField("confirmPassword", value)}
             isPassword
             icon="lock-closed-outline"
             error={confirmPasswordError || undefined}
@@ -239,7 +242,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             label="STREET ADDRESS"
             placeholder="123 Main Street"
             value={formData.street}
-            onChangeText={(value) => updateField('street', value)}
+            onChangeText={(value) => updateField("street", value)}
             icon="location-outline"
           />
 
@@ -247,21 +250,21 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             label="CITY"
             placeholder="Pretoria"
             value={formData.city}
-            onChangeText={(value) => updateField('city', value)}
+            onChangeText={(value) => updateField("city", value)}
           />
 
           <Input
             label="PROVINCE"
             placeholder="Gauteng"
             value={formData.province}
-            onChangeText={(value) => updateField('province', value)}
+            onChangeText={(value) => updateField("province", value)}
           />
 
           <Input
             label="POSTAL CODE"
             placeholder="0001"
             value={formData.postalCode}
-            onChangeText={(value) => updateField('postalCode', value)}
+            onChangeText={(value) => updateField("postalCode", value)}
             keyboardType="numeric"
           />
 
@@ -275,7 +278,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
 
           <View style={styles.loginContainer}>
             <Text style={styles.loginText}>Already Have An Account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <TouchableOpacity onPress={() => navigation.navigate("Login")}>
               <Text style={styles.loginLink}>Log In</Text>
             </TouchableOpacity>
           </View>
@@ -296,20 +299,20 @@ const styles = StyleSheet.create({
   },
   header: {
     height: 180,
-    position: 'relative',
-    overflow: 'hidden',
+    position: "relative",
+    overflow: "hidden",
   },
   headerShape: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
+    position: "absolute",
+    width: "100%",
+    height: "100%",
     backgroundColor: colors.primary,
     borderBottomRightRadius: 100,
     transform: [{ scaleX: 2 }],
   },
   headerContent: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     paddingHorizontal: spacing.xl,
   },
   title: {
@@ -341,9 +344,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: spacing.xl,
   },
   loginText: {
