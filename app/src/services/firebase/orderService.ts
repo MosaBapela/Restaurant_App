@@ -1,16 +1,16 @@
 import {
-    addDoc,
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    onSnapshot,
-    orderBy,
-    query,
-    Timestamp,
-    Unsubscribe,
-    updateDoc,
-    where,
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+  Timestamp,
+  Unsubscribe,
+  updateDoc,
+  where,
 } from "firebase/firestore";
 import { Order, OrderStatus } from "../../types/order.types";
 import { auth, db } from "./config";
@@ -187,6 +187,44 @@ export const subscribeToUserOrders = (
       if (onError)
         onError(
           new Error(error?.message || "Realtime order subscription failed"),
+        );
+    },
+  );
+};
+
+/**
+ * Subscribe to ALL orders in realtime (Admin).
+ * Fires whenever any order is created or updated in Firestore.
+ */
+export const subscribeToAllOrders = (
+  onData: (orders: Order[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe => {
+  const q = query(
+    collection(db!, ORDERS_COLLECTION),
+    orderBy("createdAt", "desc"),
+  );
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const orders = snapshot.docs.map((docItem) => {
+        const data = docItem.data();
+        return {
+          id: docItem.id,
+          ...data,
+          createdAt: data.createdAt.toMillis(),
+          updatedAt: data.updatedAt.toMillis(),
+        } as Order;
+      });
+      onData(orders);
+    },
+    (error: any) => {
+      if (onError)
+        onError(
+          new Error(
+            error?.message || "Realtime admin order subscription failed",
+          ),
         );
     },
   );

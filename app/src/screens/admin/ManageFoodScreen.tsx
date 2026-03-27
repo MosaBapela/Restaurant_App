@@ -24,6 +24,7 @@ import { auth } from "../../services/firebase/config";
 import {
     deleteFoodItem as serviceDeleteFoodItem,
     fetchFoodItems as serviceFetchFoodItems,
+    subscribeToFoodItems,
     updateFoodItem as serviceUpdateFoodItem,
 } from "../../services/firebase/foodService";
 import localStorageService from "../../services/localStorageService";
@@ -56,7 +57,7 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
           style: "destructive",
           onPress: async () => {
             // Log auth state for debugging web vs native
-            // eslint-disable-next-line no-console
+             
             console.debug("[ManageFood] attempting delete", {
               uid: auth?.currentUser?.uid ?? null,
               email: auth?.currentUser?.email ?? null,
@@ -71,35 +72,13 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
               } catch (e) {
                 // ignore
               }
-              // Update local redux state after persistent delete
+              // Update local redux state after persistent delete for instant optimistic UI
               dispatch(reduxDeleteFoodItem(item.id));
               Alert.alert("Deleted", `${item.name} has been deleted.`);
-              // Refresh list from server to keep state consistent
-              try {
-                const list = await serviceFetchFoodItems();
-                if (Platform.OS === "web") {
-                  const patched = await Promise.all(
-                    list.map(async (it) => {
-                      try {
-                        const local = await localStorageService.getImageUri(
-                          it.id,
-                        );
-                        if (local) return { ...it, image: local };
-                      } catch (e) {
-                        // ignore
-                      }
-                      return it;
-                    }),
-                  );
-                  dispatch(setFoodItems(patched));
-                } else {
-                  dispatch(setFoodItems(list));
-                }
-              } catch (e) {
-                // ignore refresh errors
-              }
+              // The subscribeToFoodItems listener will automatically update the
+              // Redux store once Firestore confirms the deletion — no manual re-fetch needed.
             } catch (err: any) {
-              // eslint-disable-next-line no-console
+               
               console.warn("[ManageFood] delete failed", err);
               Alert.alert("Error", err?.message || "Failed to delete item");
             } finally {
@@ -133,7 +112,7 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
       }
       dispatch(setFoodItems(list));
     } catch (err: any) {
-      // eslint-disable-next-line no-console
+       
       console.warn("[ManageFood] refresh failed", err);
     } finally {
       setRefreshing(false);
@@ -179,7 +158,7 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
           ) {
             try {
               // Attempt to read file as base64
-              // eslint-disable-next-line @typescript-eslint/no-var-requires
+               
               const FileSystem = require("expo-file-system");
               const base64 = await FileSystem.readAsStringAsync(local, {
                 encoding: "base64" as any,
@@ -209,13 +188,13 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
 
           failed++;
         } catch (e) {
-          // eslint-disable-next-line no-console
+           
           console.warn("[ManageFood] migrateImages item failed", it.id, e);
           failed++;
         }
       }
     } catch (e) {
-      // eslint-disable-next-line no-console
+       
       console.warn("[ManageFood] migrateImages failed", e);
       Alert.alert("Migration failed", String(e));
     } finally {
@@ -230,11 +209,9 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   React.useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      try {
-        setLoading(true);
-        let list = await serviceFetchFoodItems();
+    setLoading(true);
+    const unsubscribe = subscribeToFoodItems(
+      async (list) => {
         if (Platform.OS === "web") {
           const patched = await Promise.all(
             list.map(async (it) => {
@@ -247,20 +224,19 @@ export const ManageFoodScreen: React.FC<Props> = ({ navigation }) => {
               return it;
             }),
           );
-          list = patched;
+          dispatch(setFoodItems(patched));
+        } else {
+          dispatch(setFoodItems(list));
         }
-        if (mounted) dispatch(setFoodItems(list));
-      } catch (err: any) {
-        // eslint-disable-next-line no-console
-        console.warn("[ManageFood] fetch failed", err);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-    load();
-    return () => {
-      mounted = false;
-    };
+        setLoading(false);
+      },
+      (err) => {
+         
+        console.warn("[ManageFood] subscription error", err);
+        setLoading(false);
+      },
+    );
+    return unsubscribe;
   }, [dispatch]);
 
   const handleEditItem = (item: FoodItem) => {

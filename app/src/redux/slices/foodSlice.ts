@@ -55,7 +55,17 @@ const foodSlice = createSlice({
   reducers: {
     setFoodItems: (state, action: PayloadAction<FoodItem[]>) => {
       state.items = action.payload;
-      state.filteredItems = action.payload;
+      // Re-apply any active category / search filters so that a realtime
+      // Firestore update (e.g. admin delete) doesn't reset the user's view.
+      state.filteredItems = action.payload.filter((item) => {
+        const categoryMatch =
+          state.selectedCategory === 'All' || item.category === state.selectedCategory;
+        const searchMatch =
+          state.searchQuery === '' ||
+          item.name.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
+          item.description.toLowerCase().includes(state.searchQuery.toLowerCase());
+        return categoryMatch && searchMatch;
+      });
     },
     
     setCategory: (state, action: PayloadAction<FoodCategory | 'All'>) => {

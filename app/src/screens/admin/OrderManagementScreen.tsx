@@ -1,5 +1,5 @@
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import React, { useState } from "react";
 import {
     Alert,
     FlatList,
@@ -8,52 +8,58 @@ import {
     Text,
     TouchableOpacity,
     View,
-} from 'react-native';
-import { OrderCard } from '../../components/admin/OrderCard';
-import { EmptyState } from '../../components/common/EmptyState';
-import { Header } from '../../components/common/Header';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { useAppDispatch, useAppSelector } from '../../redux/hooks';
-import { setOrders, updateOrderStatus } from '../../redux/slices/orderSlice';
-import type { RootState } from '../../redux/store';
-import { auth } from '../../services/firebase/config';
-import { fetchAllOrders as serviceFetchAllOrders, updateOrderStatus as serviceUpdateOrderStatus } from '../../services/firebase/orderService';
-import { colors, spacing, typography } from '../../theme';
-import { Order, OrderStatus } from '../../types/order.types';
+} from "react-native";
+import { OrderCard } from "../../components/admin/OrderCard";
+import { EmptyState } from "../../components/common/EmptyState";
+import { Header } from "../../components/common/Header";
+import { LoadingSpinner } from "../../components/common/LoadingSpinner";
+import { useAppDispatch, useAppSelector } from "../../redux/hooks";
+import { setOrders, updateOrderStatus } from "../../redux/slices/orderSlice";
+import type { RootState } from "../../redux/store";
+import { auth } from "../../services/firebase/config";
+import {
+    fetchAllOrders as serviceFetchAllOrders,
+    updateOrderStatus as serviceUpdateOrderStatus,
+    subscribeToAllOrders,
+} from "../../services/firebase/orderService";
+import { colors, spacing, typography } from "../../theme";
+import { Order, OrderStatus } from "../../types/order.types";
 
-type Props = NativeStackScreenProps<any, 'OrderManagement'>;
+type Props = NativeStackScreenProps<any, "OrderManagement">;
 
-const STATUS_FILTERS: (OrderStatus | 'all')[] = [
-  'all',
-  'pending',
-  'confirmed',
-  'preparing',
-  'out_for_delivery',
-  'delivered',
-  'cancelled',
+const STATUS_FILTERS: (OrderStatus | "all")[] = [
+  "all",
+  "pending",
+  "confirmed",
+  "preparing",
+  "out_for_delivery",
+  "delivered",
+  "cancelled",
 ];
 
 const FILTER_LABELS = {
-  all: 'All',
-  pending: 'Pending',
-  confirmed: 'Confirmed',
-  preparing: 'Preparing',
-  out_for_delivery: 'Out for Delivery',
-  delivered: 'Delivered',
-  cancelled: 'Cancelled',
+  all: "All",
+  pending: "Pending",
+  confirmed: "Confirmed",
+  preparing: "Preparing",
+  out_for_delivery: "Out for Delivery",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
 };
 
 export const OrderManagementScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { orders } = useAppSelector((state: RootState) => state.order);
-  const [selectedFilter, setSelectedFilter] = useState<OrderStatus | 'all'>('all');
+  const [selectedFilter, setSelectedFilter] = useState<OrderStatus | "all">(
+    "all",
+  );
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const filteredOrders =
-    selectedFilter === 'all'
+    selectedFilter === "all"
       ? orders
-        : orders.filter((order: Order) => order.status === selectedFilter);
+      : orders.filter((order: Order) => order.status === selectedFilter);
 
   const handleUpdateStatus = async (orderId: string, status: OrderStatus) => {
     // Optimistic update in Redux
@@ -63,50 +69,75 @@ export const OrderManagementScreen: React.FC<Props> = ({ navigation }) => {
     } catch (err: any) {
       // Log auth state for debugging
       // eslint-disable-next-line no-console
-      console.debug('[OrderManagement] update status failed for', { orderId, uid: auth?.currentUser?.uid ?? null });
+      console.debug("[OrderManagement] update status failed for", {
+        orderId,
+        uid: auth?.currentUser?.uid ?? null,
+      });
       // eslint-disable-next-line no-console
-      console.warn('[OrderManagement] update status failed, refreshing orders', err);
+      console.warn(
+        "[OrderManagement] update status failed, refreshing orders",
+        err,
+      );
       // rollback by reloading orders from server
       try {
         const list = await serviceFetchAllOrders();
         dispatch(setOrders(list));
       } catch (e) {
         // eslint-disable-next-line no-console
-        console.warn('[OrderManagement] refresh after failed update also failed', e);
+        console.warn(
+          "[OrderManagement] refresh after failed update also failed",
+          e,
+        );
       }
-      Alert.alert('Error', err?.message || 'Failed to update order status');
+      Alert.alert("Error", err?.message || "Failed to update order status");
     }
   };
 
   const loadOrders = async () => {
-    setLoading(true);
-    try {
-      const list = await serviceFetchAllOrders();
-      dispatch(setOrders(list));
-    } catch (err: any) {
-      // eslint-disable-next-line no-console
-      console.warn('[OrderManagement] fetch failed', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  React.useEffect(() => {
-    loadOrders();
-  }, []);
-
-  const onRefresh = async () => {
+    // kept for pull-to-refresh
     setRefreshing(true);
     try {
       const list = await serviceFetchAllOrders();
       dispatch(setOrders(list));
     } catch (err: any) {
       // eslint-disable-next-line no-console
-      console.warn('[OrderManagement] refresh failed', err);
+      console.warn("[OrderManagement] refresh failed", err);
     } finally {
       setRefreshing(false);
     }
   };
+
+  // Realtime subscription — fires immediately on mount and whenever any order
+  // is created or updated in Firestore (including status changes by admin).
+  React.useEffect(() => {
+    setLoading(true);
+
+    // Fallback: one-time fetch if realtime listener errors
+    const fallbackFetch = async () => {
+      try {
+        const list = await serviceFetchAllOrders();
+        dispatch(setOrders(list));
+      } catch (err: any) {
+        // eslint-disable-next-line no-console
+        console.warn("[OrderManagement] fallback fetch failed", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const unsubscribe = subscribeToAllOrders(
+      (list) => {
+        dispatch(setOrders(list));
+        setLoading(false);
+      },
+      () => {
+        fallbackFetch();
+      },
+    );
+    return unsubscribe;
+  }, [dispatch]);
+
+  const onRefresh = () => loadOrders();
 
   const renderOrder = ({ item }: { item: Order }) => (
     <OrderCard
@@ -159,8 +190,8 @@ export const OrderManagementScreen: React.FC<Props> = ({ navigation }) => {
           icon="receipt-outline"
           title="No Orders"
           message={
-            selectedFilter === 'all'
-              ? 'No orders have been placed yet'
+            selectedFilter === "all"
+              ? "No orders have been placed yet"
               : `No ${FILTER_LABELS[selectedFilter].toLowerCase()} orders`
           }
         />

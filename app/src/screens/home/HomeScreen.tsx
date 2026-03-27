@@ -14,7 +14,8 @@ import { FoodCategoryTabs } from '../../components/food/FoodCategoryTabs';
 import { FoodGrid } from '../../components/food/FoodGrid';
 import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { toggleFavorite } from '../../redux/slices/favoritesSlice';
-import { setCategory, setSearchQuery } from '../../redux/slices/foodSlice';
+import { setCategory, setFoodItems, setSearchQuery } from '../../redux/slices/foodSlice';
+import { subscribeToFoodItems } from '../../services/firebase/foodService';
 import { colors, spacing, typography } from '../../theme';
 import { FoodCategory } from '../../types/food.types';
 
@@ -29,7 +30,18 @@ export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [searchText, setSearchText] = useState('');
 
   // Food items are initialized on app startup from Firestore by the
-  // `initializeFoods` thunk. No local seeding is required here.
+  // `initializeFoods` thunk. A realtime subscription here ensures admin
+  // additions/deletions are immediately reflected without a manual refresh.
+  React.useEffect(() => {
+    const unsubscribe = subscribeToFoodItems(
+      (list) => dispatch(setFoodItems(list)),
+      (err) => {
+         
+        console.warn('[HomeScreen] food subscription error', err);
+      },
+    );
+    return unsubscribe;
+  }, [dispatch]);
 
   const handleSearch = (text: string) => {
     setSearchText(text);

@@ -5,10 +5,12 @@ import {
     doc,
     getDoc,
     getDocs,
+    onSnapshot,
     orderBy,
     query,
     serverTimestamp,
     Timestamp,
+    Unsubscribe,
     updateDoc,
     where,
 } from 'firebase/firestore';
@@ -48,7 +50,7 @@ export const fetchFoodItems = async (): Promise<FoodItem[]> => {
     });
   } catch (error: any) {
     // include auth state in error for easier debugging on web vs native
-    // eslint-disable-next-line no-console
+     
     console.error('[foodService] fetchFoodItems failed', { error, currentUser: auth?.currentUser?.uid ?? null });
     throw new Error(error.message || 'Failed to fetch food items');
   }
@@ -84,7 +86,7 @@ export const fetchFoodItemsByCategory = async (
       } as unknown) as FoodItem;
     });
   } catch (error: any) {
-    // eslint-disable-next-line no-console
+     
     console.error('[foodService] fetchFoodItemsByCategory failed', { error, currentUser: auth?.currentUser?.uid ?? null });
     throw new Error(error.message || 'Failed to fetch food items by category');
   }
@@ -120,7 +122,7 @@ export const fetchFoodItem = async (foodId: string): Promise<FoodItem> => {
       updatedAt,
     } as FoodItem;
   } catch (error: any) {
-    // eslint-disable-next-line no-console
+     
     console.error('[foodService] fetchFoodItem failed', { foodId, error, currentUser: auth?.currentUser?.uid ?? null });
     throw new Error(error.message || 'Failed to fetch food item');
   }
@@ -142,7 +144,7 @@ export const addFoodItem = async (
     const docRef = await addDoc(collection(db!, FOOD_COLLECTION), payload);
     return docRef.id;
   } catch (error: any) {
-    // eslint-disable-next-line no-console
+     
     console.error('[foodService] addFoodItem failed', { error, currentUser: auth?.currentUser?.uid ?? null });
     throw new Error(error.message || 'Failed to add food item');
   }
@@ -160,7 +162,7 @@ export const updateFoodItem = async (
     const payload: any = { ...updates, updatedAt: Timestamp.now() };
     await updateDoc(docRef, payload);
   } catch (error: any) {
-    // eslint-disable-next-line no-console
+     
     console.error('[foodService] updateFoodItem failed', { foodId, updates, error, currentUser: auth?.currentUser?.uid ?? null });
     throw new Error(error.message || 'Failed to update food item');
   }
@@ -173,8 +175,47 @@ export const deleteFoodItem = async (foodId: string): Promise<void> => {
   try {
     await deleteDoc(doc(db!, FOOD_COLLECTION, foodId));
   } catch (error: any) {
-    // eslint-disable-next-line no-console
+     
     console.error('[foodService] deleteFoodItem failed', { foodId, error, currentUser: auth?.currentUser?.uid ?? null });
     throw new Error(error.message || 'Failed to delete food item');
   }
+};
+
+/**
+ * Subscribe to all food items in realtime.
+ * Fires immediately on mount and on every add / update / delete in Firestore.
+ * Returns an unsubscribe function — call it on component unmount.
+ */
+export const subscribeToFoodItems = (
+  onData: (items: FoodItem[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe => {
+  const q = query(collection(db!, FOOD_COLLECTION), orderBy('name'));
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const items = snapshot.docs.map((d) => {
+        const data = d.data() as any;
+        const createdAt =
+          data?.createdAt && typeof (data.createdAt as any).toMillis === 'function'
+            ? (data.createdAt as Timestamp).toMillis()
+            : typeof data.createdAt === 'number'
+            ? data.createdAt
+            : Date.now();
+        const updatedAt =
+          data?.updatedAt && typeof (data.updatedAt as any).toMillis === 'function'
+            ? (data.updatedAt as Timestamp).toMillis()
+            : typeof data.updatedAt === 'number'
+            ? data.updatedAt
+            : createdAt;
+        return { id: d.id, ...data, createdAt, updatedAt } as FoodItem;
+      });
+      onData(items);
+    },
+    (error: any) => {
+      if (onError)
+        onError(new Error(error?.message || 'Realtime food subscription failed'));
+    },
+  );
 };
